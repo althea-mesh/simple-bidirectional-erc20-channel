@@ -166,8 +166,8 @@ contract ChannelManager {
             // balances must be passed in with same order as tokensHeld
             require(
                 tokenBalanceA[i] + tokenBalanceB[i] ==
-                    channel.tokenDepositA[channel.tokensHeld[i]] +
-                        channel.tokenDepositB[channel.tokensHeld[i]]
+                    channels[channelId].tokenDepositA[channel.tokensHeld[i]] +
+                        channels[channelId].tokenDepositB[channel.tokensHeld[i]]
             );
         }
 
