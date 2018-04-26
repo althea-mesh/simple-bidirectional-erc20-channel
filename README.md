@@ -1,1 +1,1 @@
-# Ethcalate Bi-Directional Payment Channel (ERC20)
+# Ethcalate Bi-Directional Payment Channel (Single ERC20)
