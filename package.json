@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "dotenv": "^5.0.1",
+    "ethjs": "^0.3.6",
     "truffle-hdwallet-provider-privkey": "^0.2.0",
     "zeppelin-solidity": "^1.8.0"
   },
