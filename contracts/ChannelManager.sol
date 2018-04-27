@@ -59,9 +59,9 @@ contract ChannelManager {
 
     function openChannel(
         address to,
-        uint challenge,
         address tokenContract,
-        uint tokenAmount
+        uint tokenAmount,
+        uint challenge
     ) 
         public 
     {
@@ -109,6 +109,7 @@ contract ChannelManager {
 
         require(msg.sender == channel.agentB, "Not your channel.");
         require(channel.status == ChannelStatus.Open, "Channel status is not Open.");
+        require(tokenContract == channel.tokenContract, "Different token contract than channel.");
 
         channel.depositB = tokenAmount;
         channel.balanceB = tokenAmount;
