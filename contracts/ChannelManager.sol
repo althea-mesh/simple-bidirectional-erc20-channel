@@ -16,13 +16,13 @@ contract ChannelManager {
         bytes32 indexed channelId,
         address indexed agentA,
         address indexed agentB,
-        address tokenContract,
         uint256 depositA,
         uint256 depositB
     );
     event ChannelChallenge(
         bytes32 indexed channelId,
-        uint256 closeTime
+        uint256 closeTime,
+        address challengeStartedBy
     );
     event ChannelUpdateState(
         bytes32 indexed channelId,
@@ -51,6 +51,7 @@ contract ChannelManager {
         uint closeTime;
         uint balanceA; // for state update
         uint balanceB; // for state update
+        address challengeStartedBy; // for fast close
     }
 
     mapping (bytes32 => Channel) public channels;
@@ -104,18 +105,17 @@ contract ChannelManager {
         );
     }
 
-    function joinChannel(bytes32 id, address tokenContract, uint tokenAmount) public {
+    function joinChannel(bytes32 id, uint tokenAmount) public {
         Channel storage channel = channels[id];
 
         require(msg.sender == channel.agentB, "Not your channel.");
         require(channel.status == ChannelStatus.Open, "Channel status is not Open.");
-        require(tokenContract == channel.tokenContract, "Different token contract than channel.");
 
         channel.depositB = tokenAmount;
         channel.balanceB = tokenAmount;
 
         // transfer tokens, must be approved
-        ERC20 erc20 = ERC20(tokenContract);
+        ERC20 erc20 = ERC20(channel.tokenContract);
         require(erc20.transferFrom(msg.sender, address(this), tokenAmount), "Error transferring tokens.");
 
         channel.status = ChannelStatus.Joined;
@@ -123,7 +123,6 @@ contract ChannelManager {
             id,
             channel.agentA,
             channel.agentB,
-            tokenContract,
             channel.depositA,
             channel.depositB
         );
@@ -245,8 +244,9 @@ contract ChannelManager {
         // update channel status
         channel.status = ChannelStatus.Challenge;
         channel.closeTime = now + channel.challenge;
+        channel.challengeStartedBy = msg.sender;
         
-        emit ChannelChallenge(channelId, channel.closeTime);
+        emit ChannelChallenge(channelId, channel.closeTime, msg.sender);
     }
 
     function closeChannel(bytes32 channelId) public {
@@ -263,7 +263,11 @@ contract ChannelManager {
             channel.status == ChannelStatus.Challenge,
             "Channel status not Challenge."
         );
-        require(now > channel.closeTime, "Challenge period not over.");
+
+        // if closer is not the person who started the challenge, fast close channel
+        if (msg.sender != channel.challengeStartedBy) {
+            require(now > channel.closeTime, "Challenge period not over.");
+        }
 
         // if true, then use final state to close channel
         ERC20 token = ERC20(channel.tokenContract);
@@ -294,7 +298,8 @@ contract ChannelManager {
         uint,
         uint,
         uint,
-        uint
+        uint,
+        address
     ) {
         Channel memory channel = channels[id];
         return (
@@ -308,7 +313,8 @@ contract ChannelManager {
             channel.nonce,
             channel.closeTime,
             channel.balanceA,
-            channel.balanceB
+            channel.balanceB,
+            channel.challengeStartedBy
         );
     }
 }
