@@ -98,14 +98,9 @@ contract('ChannelManager', async accounts => {
     await this.simpleToken.approve(channelManager.address, DEPOSIT_B, {
       from: AGENT_B
     })
-    await channelManager.joinChannel(
-      activeId,
-      this.simpleToken.address,
-      DEPOSIT_B,
-      {
-        from: AGENT_B
-      }
-    )
+    await channelManager.joinChannel(activeId, DEPOSIT_B, {
+      from: AGENT_B
+    })
     const [
       agentA,
       agentB,
