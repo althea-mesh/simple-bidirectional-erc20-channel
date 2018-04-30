@@ -128,7 +128,7 @@ contract('ChannelManager', async accounts => {
     assert.equal(balanceB, DEPOSIT_B)
   })
 
-  it('should recognize a valid double signed transaction', async () => {
+  it.skip('should recognize a valid double signed transaction', async () => {
     const FROMATOB = web3.toWei(1, 'ether')
     const NONCE = 1
 
@@ -185,26 +185,24 @@ contract('ChannelManager', async accounts => {
       const channelManager = await ChannelManager.deployed()
       const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B)
 
-      const balanceA = new BigNumber(this.balanceA).minus(
+      this.balanceA = new BigNumber(this.balanceA).minus(
         new BigNumber(FROMATOB)
       )
-      const balanceB = new BigNumber(this.balanceB).plus(
-        new BigNumber(FROMATOB)
-      )
+      this.balanceB = new BigNumber(this.balanceB).plus(new BigNumber(FROMATOB))
 
       const hash = createTxHashToSign(
         activeId,
         NONCE,
-        balanceA.toString(),
-        balanceB.toString()
+        this.balanceA.toString(),
+        this.balanceB.toString()
       )
 
       const sigA = web3.eth.sign(AGENT_A, hash)
       const isValid = await channelManager.isValidStateUpdate.call(
         activeId,
         NONCE,
-        balanceA.toString(),
-        balanceB.toString(),
+        this.balanceA.toString(),
+        this.balanceB.toString(),
         sigA,
         '',
         true,
@@ -224,26 +222,24 @@ contract('ChannelManager', async accounts => {
       const channelManager = await ChannelManager.deployed()
       const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B)
 
-      const balanceA = new BigNumber(this.balanceA).minus(
+      this.balanceA = new BigNumber(this.balanceA).minus(
         new BigNumber(FROMATOB)
       )
-      const balanceB = new BigNumber(this.balanceB).plus(
-        new BigNumber(FROMATOB)
-      )
+      this.balanceB = new BigNumber(this.balanceB).plus(new BigNumber(FROMATOB))
 
       const hash = createTxHashToSign(
         activeId,
         NONCE,
-        balanceA.toString(),
-        balanceB.toString()
+        this.balanceA.toString(),
+        this.balanceB.toString()
       )
 
       const sigB = web3.eth.sign(AGENT_B, hash)
       const isValid = await channelManager.isValidStateUpdate.call(
         activeId,
         NONCE,
-        balanceA.toString(),
-        balanceB.toString(),
+        this.balanceA.toString(),
+        this.balanceB.toString(),
         '',
         sigB,
         false,
@@ -254,91 +250,80 @@ contract('ChannelManager', async accounts => {
     }
   )
 
-  it.skip(
-    'should start challenge period and accept state updates',
-    async () => {
-      const FROMBTOA = web3.toWei(3, 'ether')
-      const NONCE = 2
+  it('should start challenge period', async () => {
+    const channelManager = await ChannelManager.deployed()
+    const activeId = await channelManager.activeIds.call(
+      AGENT_A,
+      AGENT_B,
+      this.simpleToken.address
+    )
 
-      const channelManager = await ChannelManager.deployed()
-      const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B)
+    // start challenge with latest double signed tx hash
+    await channelManager.startChallenge(activeId, { from: AGENT_B })
 
-      let balanceA = new BigNumber(this.balanceA).plus(new BigNumber(FROMBTOA))
-      let balanceB = new BigNumber(this.balanceB).minus(new BigNumber(FROMBTOA))
+    const channel = await channelManager.getChannel(activeId)
 
-      let hash = createTxHashToSign(
-        activeId,
-        NONCE,
-        balanceA.toString(),
-        balanceB.toString()
-      )
+    assert.equal(channel[5].toNumber(), CHANNEL_STATUS.CHALLENGE) // status
+    assert.equal(channel[11], AGENT_B) // challengeStartedBy
+  })
 
-      let sigA = web3.eth.sign(AGENT_A, hash)
-      let sigB = web3.eth.sign(AGENT_B, hash)
+  it.skip('should accept state updates during challenge period', async () => {
+    const FROMBTOA = web3.toWei(3, 'ether')
+    const NONCE = 2
 
-      // start challenge with latest double signed tx hash
-      await channelManager.startChallenge(
-        activeId,
-        NONCE,
-        balanceA.toString(),
-        balanceB.toString(),
-        sigA,
-        sigB,
-        { from: AGENT_B }
-      )
+    const channelManager = await ChannelManager.deployed()
+    const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B)
 
-      let channel = await channelManager.getChannel(activeId)
+    this.balanceA = new BigNumber(this.balanceA).plus(new BigNumber(FROMBTOA))
+    this.balanceB = new BigNumber(this.balanceB).minus(new BigNumber(FROMBTOA))
 
-      assert.equal(channel[4].toNumber(), CHANNEL_STATUS.CHALLENGE) // status
+    const hash = createTxHashToSign(
+      activeId,
+      NONCE + 1,
+      this.balanceA.toString(),
+      this.balanceB.toString()
+    )
 
-      // check on chain state updates
-      assert.equal(channel[6].toNumber(), NONCE) // nonce
-      assert.equal(channel[8].toString(), balanceA.toString())
-      assert.equal(channel[9].toString(), balanceB.toString())
+    const sigA = web3.eth.sign(AGENT_A, hash)
+    const sigB = web3.eth.sign(AGENT_B, hash)
 
-      /// /////////////////////////////////////////////
-      // new tx during challenge period is still valid
-      /// /////////////////////////////////////////////
+    await channelManager.updateState(
+      activeId,
+      NONCE + 1, // update with higher nonce
+      this.balanceA.toString(),
+      this.balanceB.toString(),
+      sigA,
+      sigB,
+      { from: AGENT_A }
+    )
 
-      balanceA = new BigNumber(this.balanceA).plus(new BigNumber(FROMBTOA))
-      balanceB = new BigNumber(this.balanceB).minus(new BigNumber(FROMBTOA))
+    const channel = await channelManager.getChannel(activeId)
+    // check on chain state updates
+    assert.equal(channel[6].toNumber(), NONCE + 1) // nonce
+    assert.equal(channel[8].toString(), this.balanceA.toString())
+    assert.equal(channel[9].toString(), this.balanceB.toString())
+  })
 
-      hash = createTxHashToSign(
-        activeId,
-        NONCE + 1,
-        balanceA.toString(),
-        balanceB.toString()
-      )
-
-      sigA = web3.eth.sign(AGENT_A, hash)
-      sigB = web3.eth.sign(AGENT_B, hash)
-
-      await channelManager.updateState(
-        activeId,
-        NONCE + 1, // update with higher nonce
-        balanceA.toString(),
-        balanceB.toString(),
-        sigA,
-        sigB,
-        { from: AGENT_A }
-      )
-
-      channel = await channelManager.getChannel(activeId)
-      // check on chain state updates
-      assert.equal(channel[6].toNumber(), NONCE + 1) // nonce
-      assert.equal(channel[8].toString(), balanceA.toString())
-      assert.equal(channel[9].toString(), balanceB.toString())
-
-      // finish challenge period
-      await new Promise(resolve => {
-        setTimeout(() => {
-          resolve()
-        }, CHALLENGE_PERIOD * 1000)
-      })
-    }
-  )
+  it('should fast close channel', async () => {
+    const channelManager = await ChannelManager.deployed()
+    const activeId = await channelManager.activeIds.call(
+      AGENT_A,
+      AGENT_B,
+      this.simpleToken.address
+    )
+    const channel = await channelManager.getChannel(activeId)
+    console.log('channel: ', channel)
+    await channelManager.closeChannel(activeId, { from: AGENT_A })
+  })
 
   it.skip('should close channel after challenge period', async () => {
+    // finish challenge period
+    await new Promise(resolve => {
+      setTimeout(() => {
+        resolve()
+      }, CHALLENGE_PERIOD * 1000)
+    })
+
     const channelManager = await ChannelManager.deployed()
     const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B)
 
