@@ -265,7 +265,7 @@ contract ChannelManager {
         );
 
         // if closer is not the person who started the challenge, fast close channel
-        if (msg.sender != channel.challengeStartedBy) {
+        if (msg.sender == channel.challengeStartedBy) {
             require(now > channel.closeTime, "Challenge period not over.");
         }
 
