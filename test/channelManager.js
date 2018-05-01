@@ -43,7 +43,8 @@ contract('ChannelManager', async accounts => {
     assert.equal(balanceB, AMOUNT_TO_EACH.toNumber())
   })
 
-  it('should open a channel', async () => {
+  it('should open a channel with tokens', async () => {
+    // tokens
     const channelManager = await ChannelManager.deployed()
     await this.simpleToken.approve(channelManager.address, DEPOSIT_A)
     await channelManager.openChannel(
@@ -88,7 +89,44 @@ contract('ChannelManager', async accounts => {
     assert.equal(balanceB, 0)
   })
 
-  it('should let channel be joined', async () => {
+  it('should open a channel with eth', async () => {
+    // tokens
+    const channelManager = await ChannelManager.deployed()
+    await this.simpleToken.approve(channelManager.address, DEPOSIT_A)
+    await channelManager.openChannel(AGENT_B, 0, 0, CHALLENGE_PERIOD, {
+      from: AGENT_A,
+      value: DEPOSIT_A
+    })
+
+    const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B, 0)
+    const [
+      agentA,
+      agentB,
+      tokenContract,
+      depositA,
+      depositB,
+      status,
+      challenge,
+      nonce,
+      closeTime,
+      balanceA,
+      balanceB
+    ] = await channelManager.getChannel(activeId)
+
+    assert.equal(agentA, AGENT_A)
+    assert.equal(agentB, AGENT_B)
+    assert.equal(tokenContract, 0)
+    assert.equal(depositA, DEPOSIT_A)
+    assert.equal(depositB, 0)
+    assert.equal(status, CHANNEL_STATUS.OPEN)
+    assert.equal(challenge, CHALLENGE_PERIOD)
+    assert.equal(nonce, 0)
+    assert.equal(closeTime, 0)
+    assert.equal(balanceA, DEPOSIT_A)
+    assert.equal(balanceB, 0)
+  })
+
+  it('should let token channel be joined', async () => {
     const channelManager = await ChannelManager.deployed()
     const activeId = await channelManager.activeIds.call(
       AGENT_A,
@@ -100,6 +138,40 @@ contract('ChannelManager', async accounts => {
     })
     await channelManager.joinChannel(activeId, DEPOSIT_B, {
       from: AGENT_B
+    })
+    const [
+      agentA,
+      agentB,
+      tokenContract,
+      depositA,
+      depositB,
+      status,
+      challenge,
+      nonce,
+      closeTime,
+      balanceA,
+      balanceB
+    ] = await channelManager.getChannel(activeId)
+
+    assert.equal(agentA, AGENT_A)
+    assert.equal(agentB, AGENT_B)
+    assert.equal(tokenContract, this.simpleToken.address)
+    assert.equal(depositA, DEPOSIT_A)
+    assert.equal(depositB, DEPOSIT_B)
+    assert.equal(status, CHANNEL_STATUS.JOINED)
+    assert.equal(challenge, CHALLENGE_PERIOD)
+    assert.equal(nonce, 0)
+    assert.equal(closeTime, 0)
+    assert.equal(balanceA, DEPOSIT_A)
+    assert.equal(balanceB, DEPOSIT_B)
+  })
+
+  it('should let eth channel be joined', async () => {
+    const channelManager = await ChannelManager.deployed()
+    const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B, 0)
+    await channelManager.joinChannel(activeId, 0, {
+      from: AGENT_B,
+      value: DEPOSIT_B
     })
     const [
       agentA,
@@ -250,13 +322,26 @@ contract('ChannelManager', async accounts => {
     }
   )
 
-  it('should start challenge period', async () => {
+  it('should start challenge period for tokens', async () => {
     const channelManager = await ChannelManager.deployed()
     const activeId = await channelManager.activeIds.call(
       AGENT_A,
       AGENT_B,
       this.simpleToken.address
     )
+
+    // start challenge with latest double signed tx hash
+    await channelManager.startChallenge(activeId, { from: AGENT_B })
+
+    const channel = await channelManager.getChannel(activeId)
+
+    assert.equal(channel[5].toNumber(), CHANNEL_STATUS.CHALLENGE) // status
+    assert.equal(channel[11], AGENT_B) // challengeStartedBy
+  })
+
+  it('should start challenge period for eth', async () => {
+    const channelManager = await ChannelManager.deployed()
+    const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B, 0)
 
     // start challenge with latest double signed tx hash
     await channelManager.startChallenge(activeId, { from: AGENT_B })
