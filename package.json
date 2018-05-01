@@ -13,7 +13,8 @@
     "zeppelin-solidity": "^1.8.0"
   },
   "devDependencies": {
-    "standard": "^11.0.1"
+    "standard": "^11.0.1",
+    "truffle": "^4.1.7"
   },
   "scripts": {
     "test": "truffle test"
