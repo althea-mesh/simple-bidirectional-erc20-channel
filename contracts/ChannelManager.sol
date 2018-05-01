@@ -65,25 +65,41 @@ contract ChannelManager {
         uint challenge
     ) 
         public 
+        payable
     {
         require(challenge != 0, "Challenge period must be non-zero.");
         require(to != address(0), "Need counterparty address.");
         require(to != msg.sender, "Cannot create channel with yourself.");
         require(activeIds[msg.sender][to][tokenContract] == bytes32(0), "Channel exists.");
         require(activeIds[to][msg.sender][tokenContract] == bytes32(0), "Channel exists.");
+        if (tokenContract != address(0)) {
+            require(msg.value == 0, "Can't use ETH and tokens together.");
+        }
 
         // channel specific
         bytes32 id = keccak256(msg.sender, to, now);
         Channel memory channel;
         channel.agentA = msg.sender;
         channel.agentB = to;
-        channel.depositA = tokenAmount;
-        channel.balanceA = tokenAmount; // so that close can happen without any state updates
-        channel.tokenContract = tokenContract;
 
-        // transfer tokens, must be approved
-        ERC20 erc20 = ERC20(tokenContract);
-        require(erc20.transferFrom(msg.sender, address(this), tokenAmount), "Error transferring tokens.");
+        // set deposits
+        if (tokenContract == address(0)) {
+            // eth
+            channel.depositA = msg.value;
+            channel.balanceA = msg.value; // so that close can happen without any state updates
+        } else {
+            // tokens
+            channel.depositA = tokenAmount;
+            channel.balanceA = tokenAmount; // so that close can happen without any state updates
+
+             // transfer tokens, must be approved
+            ERC20 erc20 = ERC20(tokenContract);
+            require(
+                erc20.transferFrom(msg.sender, address(this), tokenAmount),
+                "Error transferring tokens."
+            );
+        }
+        channel.tokenContract = tokenContract;
 
         // lifecycle
         channel.status = ChannelStatus.Open;
@@ -105,18 +121,26 @@ contract ChannelManager {
         );
     }
 
-    function joinChannel(bytes32 id, uint tokenAmount) public {
+    function joinChannel(bytes32 id, uint tokenAmount) 
+        public
+        payable 
+    {
         Channel storage channel = channels[id];
 
         require(msg.sender == channel.agentB, "Not your channel.");
         require(channel.status == ChannelStatus.Open, "Channel status is not Open.");
 
-        channel.depositB = tokenAmount;
-        channel.balanceB = tokenAmount;
+        if (channel.tokenContract == address(0)) {
+            channel.depositB = msg.value;
+            channel.balanceB = msg.value;
+        } else {
+            channel.depositB = tokenAmount;
+            channel.balanceB = tokenAmount;
 
-        // transfer tokens, must be approved
-        ERC20 erc20 = ERC20(channel.tokenContract);
-        require(erc20.transferFrom(msg.sender, address(this), tokenAmount), "Error transferring tokens.");
+            // transfer tokens, must be approved
+            ERC20 erc20 = ERC20(channel.tokenContract);
+            require(erc20.transferFrom(msg.sender, address(this), tokenAmount), "Error transferring tokens.");
+        }
 
         channel.status = ChannelStatus.Joined;
         emit ChannelJoin(
@@ -144,6 +168,7 @@ contract ChannelManager {
     {
         Channel memory channel = channels[channelId];
 
+        // sanity checks
         require(
             balanceA + balanceB == channel.depositA + channel.depositB,
             "Balances do not add up to deposits."
@@ -152,6 +177,10 @@ contract ChannelManager {
             channel.status == ChannelStatus.Joined || channel.status == ChannelStatus.Challenge,
             "Channel status is not Joined or Challenge."
         );
+        if (channel.status == ChannelStatus.Challenge) {
+            require(now < channel.closeTime, "Challenge period is over.");
+        }
+        require(nonce > channel.nonce, "Nonce is not higher than on chain channel state.");
 
         // require state info to be signed by both participants
         // we are using eth_signTypedData, references:
@@ -218,7 +247,6 @@ contract ChannelManager {
             ) == true,
             "Both signatures not valid."
         );
-        require(nonce > channel.nonce, "Nonce is not higher than on chain channel state.");
 
         // set state variables
         channel.balanceA = balanceA;
@@ -269,16 +297,24 @@ contract ChannelManager {
             require(now > channel.closeTime, "Challenge period not over.");
         }
 
+        // zero out to avoid reentrancy
+        channel.balanceA = 0;
+        channel.balanceB = 0;
         // if true, then use final state to close channel
-        ERC20 token = ERC20(channel.tokenContract);
-        require(
-            token.transfer(channel.agentA, channel.balanceA),
-            "Error transferring tokens."
-        );
-        require(
-            token.transfer(channel.agentB, channel.balanceB),
-            "Error transferring tokens."
-        );
+        if (channel.tokenContract == address(0)) {
+            channel.agentA.transfer(channel.balanceA);
+            channel.agentB.transfer(channel.balanceB);
+        } else {
+            ERC20 token = ERC20(channel.tokenContract);
+            require(
+                token.transfer(channel.agentA, channel.balanceA),
+                "Error transferring tokens."
+            );
+            require(
+                token.transfer(channel.agentB, channel.balanceB),
+                "Error transferring tokens."
+            );
+        }
 
         channel.status = ChannelStatus.Closed; // redundant bc channel is deleted
         delete activeIds[channel.agentA][channel.agentB][channel.tokenContract];
