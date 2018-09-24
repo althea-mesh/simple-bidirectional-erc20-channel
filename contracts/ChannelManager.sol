@@ -1,4 +1,4 @@
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./ECTools.sol";
 import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -100,8 +100,7 @@ contract ChannelManager {
         // Add it to the lookup table
         activeIds[msg.sender][to] = id;
 
-        emit ChannelOpen(
-            id,
+        emit ChannelOpen(id,
             channel.agentA,
             channel.agentB,
             channel.depositA,
@@ -146,8 +145,7 @@ contract ChannelManager {
         uint256 nonce,
         uint256[] tokenBalanceA,
         uint256[] tokenBalanceB,
-        uint256 balanceA,
-        uint256 balanceB,
+        uint256[] bals,
         string sigA,
         string sigB,
         bool requireSigA,
@@ -160,7 +158,7 @@ contract ChannelManager {
         Channel storage channel = channels[channelId];
 
         // balances must add up to deposit
-        require(balanceA + balanceB == channel.depositA + channel.depositB); // eth
+        require(bals[0] + bals[1] == channel.depositA + channel.depositB); // eth
         for (uint i = 0; i < channel.tokensHeld.length; i++) {
             // tokens
             // balances must be passed in with same order as tokensHeld
@@ -183,8 +181,8 @@ contract ChannelManager {
             nonce,
             tokenBalanceA,
             tokenBalanceB,
-            balanceA,
-            balanceB
+            bals[0],
+            bals[1]
         );
 
         bytes32 signTypedDataFingerprint = keccak256(
@@ -218,7 +216,11 @@ contract ChannelManager {
     {
         Channel storage channel = channels[channelId];
 
-        // sanity checks
+        // sanity checks;
+        uint256[] bals;
+        bals.push(balanceA);
+        bals.push(balanceB);
+        
         require(msg.sender == channel.agentA || msg.sender == channel.agentB); // comes from agent
         require(
             isValidStateUpdate(
@@ -226,8 +228,7 @@ contract ChannelManager {
                 nonce,
                 tokenBalanceA,
                 tokenBalanceB,
-                balanceA,
-                balanceB,
+                bals,
                 sigA,
                 sigB,
                 true,
