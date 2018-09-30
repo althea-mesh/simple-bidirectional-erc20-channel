@@ -77,7 +77,7 @@ contract ChannelManager {
         }
 
         // channel specific
-        bytes32 id = keccak256(msg.sender, to, now);
+        bytes32 id = keccak256(abi.encodePacked(msg.sender, to, now));
         Channel memory channel;
         channel.agentA = msg.sender;
         channel.agentB = to;
@@ -187,18 +187,18 @@ contract ChannelManager {
         // https://medium.com/metamask/scaling-web3-with-signtypeddata-91d6efc8b290
         // https://github.com/ukstv/sign-typed-data-test/blob/master/contracts/SignTypedData.sol#L11
         // https://github.com/MetaMask/eth-sig-util/blob/master/index.js
-        bytes32 fingerprint = keccak256(
+        bytes32 fingerprint = keccak256(abi.encodePacked(
             channelId,
             nonce,
             balanceA,
             balanceB
-        );
+        ));
  
         // TODO show arguments / figure out what's going on 
-        bytes32 signTypedDataFingerprint = keccak256(
-            keccak256("bytes32 hash"),
-            keccak256(fingerprint)
-        );
+        bytes32 signTypedDataFingerprint = keccak256(abi.encodePacked(
+            keccak256(abi.encodePacked("bytes32 hash")),
+            keccak256(abi.encodePacked(fingerprint))
+        ));
 
         if (requireSigA) {
             require(
