@@ -1,7 +1,7 @@
 pragma solidity ^0.4.23;
 
 import "./ECTools.sol";
-import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 contract ChannelManager {
     event ChannelOpen(
@@ -193,7 +193,8 @@ contract ChannelManager {
             balanceA,
             balanceB
         );
-
+ 
+        // TODO show arguments / figure out what's going on 
         bytes32 signTypedDataFingerprint = keccak256(
             keccak256("bytes32 hash"),
             keccak256(fingerprint)
@@ -217,6 +218,8 @@ contract ChannelManager {
         return true;
     }
 
+    // TODO change arguments to include seperate sig so that anyone can submit
+    // a challenge. eg Metratransactions standard
     function updateState(
         bytes32 channelId,
         uint256 nonce,
@@ -230,10 +233,12 @@ contract ChannelManager {
         Channel storage channel = channels[channelId];
 
         // sanity checks
-        require(
-            msg.sender == channel.agentA || msg.sender == channel.agentB,
-            "Not your channel."
-        );
+        // TODO figure out if we really need to do this, do we care
+        // who submits the update if it is valid?
+        //require(
+          //  msg.sender == channel.agentA || msg.sender == channel.agentB,
+          //  "Not your channel."
+        //);
         require(
             isValidStateUpdate(
                 channelId,
@@ -244,7 +249,7 @@ contract ChannelManager {
                 sigB,
                 true,
                 true
-            ) == true,
+            ),
             "Both signatures not valid."
         );
 
@@ -255,7 +260,7 @@ contract ChannelManager {
 
         emit ChannelUpdateState(channelId, nonce, balanceA, balanceB);
     }
-
+    
     function startChallenge(bytes32 channelId) public {
         Channel storage channel = channels[channelId];
 
@@ -286,7 +291,7 @@ contract ChannelManager {
             "Not your channel."
         );
 
-        // channel must be in challenge and challenge period over
+        // channel must be in challenge
         require(
             channel.status == ChannelStatus.Challenge,
             "Channel status not Challenge."
@@ -297,6 +302,8 @@ contract ChannelManager {
             require(now > channel.closeTime, "Challenge period not over.");
         }
 
+
+        // TODO why do we transfer them nothing?
         // zero out to avoid reentrancy
         channel.balanceA = 0;
         channel.balanceB = 0;

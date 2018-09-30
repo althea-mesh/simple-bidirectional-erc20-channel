@@ -7,7 +7,7 @@ const ChannelManager = artifacts.require('./ChannelManager.sol')
 const SimpleToken = artifacts.require('./SimpleToken.sol')
 const Eth = require('ethjs')
 
-function createTxHashToSign (activeId, nonce, balanceA, balanceB) {
+function createTxHashToSign(activeId, nonce, balanceA, balanceB) {
   // fingerprint = keccak256(channelId, nonce, balanceA, balanceB)
   let hash = abi
     .soliditySHA3(
@@ -169,9 +169,8 @@ contract('ChannelManager', async accounts => {
   it('should let eth channel be joined', async () => {
     const channelManager = await ChannelManager.deployed()
     const activeId = await channelManager.activeIds.call(AGENT_A, AGENT_B, 0)
-    await channelManager.joinChannel(activeId, 0, {
+    await channelManager.joinChannel(activeId, DEPOSIT_B, {
       from: AGENT_B,
-      value: DEPOSIT_B
     })
     const [
       agentA,
