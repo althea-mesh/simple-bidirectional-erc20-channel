@@ -2,7 +2,7 @@ const leftPad = require("left-pad");
 const p = require("util").promisify;
 const ethUtils = require("ethereumjs-util");
 const BN = require("bn.js");
-const abi = require("ethereumjs-abi");
+const abi = require("web3");
 
 const {
   ACCT_0_PRIVKEY,
@@ -27,7 +27,8 @@ module.exports = {
   toSolInt256,
   closeChannel,
   createTokens,
-  createTxHashToSign
+  createTxHashToSign,
+  testSig
 };
 
 function sleep(time) {
@@ -230,5 +231,12 @@ function createTxHashToSign(activeId, nonce, balanceA, balanceB) {
     )
     .toString("hex");
   hash = `0x${hash}`;
+  return hash;
+}
+
+async function testSig(boolVal) {
+  // fingerprint = keccak256(channelId, nonce, balanceA, balanceB)
+  let hash = await abi.utils.soliditySha3(boolVal).toString("hex");
+  console.log("this is hash ", hash);
   return hash;
 }

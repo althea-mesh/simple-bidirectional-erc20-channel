@@ -153,6 +153,20 @@ contract ChannelManager {
         );
     }
 
+    function isValidBoolSig(
+        string sigA
+    )
+    public 
+    {
+        bytes32 fingerprint = keccak256(abi.encodePacked(true
+        ));
+        require(
+           ECTools.isSignedBy(fingerprint, sigA, msg.sender) == true,
+                "AgentA signature not valid"
+        );
+
+    }
+
     function isValidStateUpdate(
         bytes32 channelId,
         uint256 nonce,
@@ -196,26 +210,26 @@ contract ChannelManager {
         ));
  
         // TODO show arguments / figure out what's going on 
-        bytes32 signTypedDataFingerprint = keccak256(abi.encodePacked(
-            keccak256(abi.encodePacked("bytes32 hash")),
-            keccak256(abi.encodePacked(fingerprint))
-        ));
+        // bytes32 signTypedDataFingerprint = keccak256(abi.encodePacked(
+        //     keccak256(abi.encodePacked("bytes32 hash")),
+        //     keccak256(abi.encodePacked(fingerprint))
+        // ));
 
         if (requireSigA) {
             require(
-                ECTools.isSignedBy(signTypedDataFingerprint, sigA, channel.agentA) == true,
+                ECTools.isSignedBy(fingerprint, sigA, channel.agentA) == true,
                 "AgentA signature not valid"
             );
         }
 
-        if (requireSigB) {
-            require(
-                ECTools.isSignedBy(signTypedDataFingerprint, sigB, channel.agentB) == true,
-                "AgentA signature not valid"
-            );
-        }
+        // if (requireSigB) {
+        //     require(
+        //         ECTools.isSignedBy(signTypedDataFingerprint, sigB, channel.agentB) == true,
+        //         "AgentA signature not valid"
+        //     );
+        // }
 
-        // return true if all conditions pass
+        // // return true if all conditions pass
         return true;
     }
 
