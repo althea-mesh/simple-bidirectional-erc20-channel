@@ -2,6 +2,7 @@ const leftPad = require("left-pad");
 const p = require("util").promisify;
 const ethUtils = require("ethereumjs-util");
 const BN = require("bn.js");
+const abi = require("ethereumjs-abi");
 
 const {
   ACCT_0_PRIVKEY,
@@ -25,7 +26,8 @@ module.exports = {
   toSolUint256,
   toSolInt256,
   closeChannel,
-  createTokens
+  createTokens,
+  createTxHashToSign
 };
 
 function sleep(time) {
@@ -200,7 +202,12 @@ async function createTokens(SimpleToken) {
   const AMOUNT_TO_EACH = web3.toBigNumber(SIMPLE_TOKEN_SUPPLY).div(2);
   const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR });
   await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH);
-  return simpleToken;
+  const balance0 = await simpleToken.balanceOf(ACCT_0_ADDR);
+  assert.equal(balance0, AMOUNT_TO_EACH.toNumber());
+  const balance1 = await simpleToken.balanceOf(ACCT_1_ADDR);
+  assert.equal(balance1, AMOUNT_TO_EACH.toNumber());
+
+  return [simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH];
 }
 
 /*   before('create tokens', async () => {
@@ -213,3 +220,15 @@ async function createTokens(SimpleToken) {
     const balanceB = await this.simpleToken.balanceOf(AGENT_B)
     assert.equal(balanceB, AMOUNT_TO_EACH.toNumber())
   }) */
+
+function createTxHashToSign(activeId, nonce, balanceA, balanceB) {
+  // fingerprint = keccak256(channelId, nonce, balanceA, balanceB)
+  let hash = abi
+    .soliditySHA3(
+      ["bytes32", "uint256", "uint256", "uint256"],
+      [activeId, nonce, balanceA, balanceB]
+    )
+    .toString("hex");
+  hash = `0x${hash}`;
+  return hash;
+}

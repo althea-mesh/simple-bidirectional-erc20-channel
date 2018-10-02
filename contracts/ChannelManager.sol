@@ -31,6 +31,7 @@ contract ChannelManager {
         uint256 balanceB
     );
     event ChannelClose(bytes32 indexed channelId);
+    event Debug();
 
     enum ChannelStatus {
         Open,

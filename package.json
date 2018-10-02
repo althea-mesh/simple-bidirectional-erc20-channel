@@ -7,7 +7,7 @@
     "test": "test"
   },
   "dependencies": {
-    "bignumber.js": "^7.2.1",
+    "bignumber.js": "github:frozeman/bignumber.js-nolookahead",
     "dotenv": "^5.0.1",
     "ethereumjs-abi": "^0.6.5",
     "ethjs": "^0.3.9",

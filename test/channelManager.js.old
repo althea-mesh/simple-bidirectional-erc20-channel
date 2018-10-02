@@ -77,6 +77,7 @@ contract('ChannelManager', async accounts => {
     ] = await channelManager.getChannel(activeId)
 
     assert.equal(agentA, AGENT_A)
+    assert.equal(agentA, AGENT_A)
     assert.equal(agentB, AGENT_B)
     assert.equal(tokenContract, this.simpleToken.address)
     assert.equal(depositA, DEPOSIT_A)
