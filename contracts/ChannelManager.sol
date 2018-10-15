@@ -318,10 +318,8 @@ contract ChannelManager {
         }
 
 
-        // TODO why do we transfer them nothing?
-        // zero out to avoid reentrancy
-        channel.balanceA = 0;
-        channel.balanceB = 0;
+        // prevents reentrancy
+        channel.status = ChannelStatus.Closed;
         // if true, then use final state to close channel
         if (channel.tokenContract == address(0)) {
             channel.agentA.transfer(channel.balanceA);
@@ -338,7 +336,9 @@ contract ChannelManager {
             );
         }
 
-        channel.status = ChannelStatus.Closed; // redundant bc channel is deleted
+        // TODO zeroing these is probably redundant
+        channel.balanceA = 0;
+        channel.balanceB = 0;
         delete activeIds[channel.agentA][channel.agentB][channel.tokenContract];
         delete channels[channelId];
 
