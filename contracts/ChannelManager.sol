@@ -161,7 +161,7 @@ contract ChannelManager {
         bytes32 fingerprint = keccak256(abi.encodePacked(true
         ));
         require(
-           ECTools.isSignedBy(fingerprint, sigA, msg.sender) == true,
+            ECTools.isSignedBy(fingerprint, sigA, msg.sender) == true,
                 "AgentA signature not valid"
         );
 
@@ -209,12 +209,6 @@ contract ChannelManager {
             balanceB
         ));
  
-        // TODO show arguments / figure out what's going on 
-        // bytes32 signTypedDataFingerprint = keccak256(abi.encodePacked(
-        //     keccak256(abi.encodePacked("bytes32 hash")),
-        //     keccak256(abi.encodePacked(fingerprint))
-        // ));
-
         if (requireSigA) {
             require(
                 ECTools.isSignedBy(fingerprint, sigA, channel.agentA) == true,
@@ -222,12 +216,12 @@ contract ChannelManager {
             );
         }
 
-        // if (requireSigB) {
-        //     require(
-        //         ECTools.isSignedBy(signTypedDataFingerprint, sigB, channel.agentB) == true,
-        //         "AgentA signature not valid"
-        //     );
-        // }
+        if (requireSigB) {
+            require(
+                ECTools.isSignedBy(fingerprint, sigB, channel.agentB) == true,
+                "AgentB signature not valid"
+            );
+        }
 
         // // return true if all conditions pass
         return true;
@@ -318,10 +312,8 @@ contract ChannelManager {
         }
 
 
-        // TODO why do we transfer them nothing?
-        // zero out to avoid reentrancy
-        channel.balanceA = 0;
-        channel.balanceB = 0;
+        // prevents reentrancy
+        channel.status = ChannelStatus.Closed;
         // if true, then use final state to close channel
         if (channel.tokenContract == address(0)) {
             channel.agentA.transfer(channel.balanceA);
@@ -338,7 +330,9 @@ contract ChannelManager {
             );
         }
 
-        channel.status = ChannelStatus.Closed; // redundant bc channel is deleted
+        // TODO zeroing these is probably redundant
+        channel.balanceA = 0;
+        channel.balanceB = 0;
         delete activeIds[channel.agentA][channel.agentB][channel.tokenContract];
         delete channels[channelId];
 
