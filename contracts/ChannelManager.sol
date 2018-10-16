@@ -209,12 +209,6 @@ contract ChannelManager {
             balanceB
         ));
  
-        // TODO show arguments / figure out what's going on 
-        bytes32 signTypedDataFingerprint = keccak256(abi.encodePacked(
-             keccak256(abi.encodePacked("bytes32 hash")),
-             keccak256(abi.encodePacked(fingerprint))
-        ));
-
         if (requireSigA) {
             require(
                 ECTools.isSignedBy(fingerprint, sigA, channel.agentA) == true,
@@ -224,7 +218,7 @@ contract ChannelManager {
 
         if (requireSigB) {
             require(
-                ECTools.isSignedBy(signTypedDataFingerprint, sigB, channel.agentB) == true,
+                ECTools.isSignedBy(fingerprint, sigB, channel.agentB) == true,
                 "AgentB signature not valid"
             );
         }
