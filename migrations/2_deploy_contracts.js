@@ -9,6 +9,6 @@ module.exports = (deployer, network, accounts) => {
   deployer.deploy(ChannelManager)
   deployer.deploy(SimpleToken).then(async () => {
     const simpleToken = await SimpleToken.deployed()
-    simpleToken.transfer(accounts[1], web3.toWei(5000, 'ether'))
+    simpleToken.transfer(accounts[1], web3.utils.toWei('5000', 'ether'))
   })
 }
