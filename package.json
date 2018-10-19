@@ -7,34 +7,21 @@
     "test": "test"
   },
   "dependencies": {
-    "bignumber.js": "github:frozeman/bignumber.js-nolookahead",
-    "dotenv": "^5.0.1",
-    "ethereumjs-abi": "^0.6.5",
-    "ethjs": "^0.3.9",
-    "package_name": "^1.0.2",
-    "truffle-hdwallet-provider-privkey": "^0.2.0",
-    "openzeppelin-solidity": "^1.12.0"
+    "dotenv": "^6.1.0",
+    "eslint": "^5.7.0",
+    "ganache-cli": "^6.1.8",
+    "openzeppelin-solidity": "^1.12.0",
+    "truffle-hdwallet-provider": "0.0.6",
+    "truffle-hdwallet-provider-privkey": "^0.3.0"
   },
   "devDependencies": {
-    "babel-eslint": "^7.2.3",
-    "blue-tape": "^1.0.0",
-    "eslint": "^4.19.1",
-    "eslint-config-react-app": "^2.1.0",
-    "eslint-plugin-flowtype": "^2.50.3",
-    "eslint-plugin-import": "^2.14.0",
-    "eslint-plugin-jsx-a11y": "^5.1.1",
-    "eslint-plugin-react": "^7.11.1",
-    "ethereumjs-testrpc": "^6.0.3",
-    "ethereumjs-util": "^5.2.0",
-    "left-pad": "^1.1.3",
-    "prettier": "^1.5.3",
-    "standard": "^11.0.1",
-    "truffle": "^4.0.4"
+    "prettier": "^1.14.3",
+    "truffle": "^5.0.0-beta.1"
   },
   "scripts": {
     "test": "truffle test",
     "migrate": "truffle migrate --reset",
-    "testrpc": "testrpc -m -u 0 -u 1 -u 2 'cook mango twist then skin sort option civil have still rather guilt'",
+    "ganache": "ganache-cli -m -u 0 -u 1 -u 2 'cook mango twist then skin sort option civil have still rather guilt'",
     "prettier": "prettier --write **/**.js"
   },
   "author": "",
