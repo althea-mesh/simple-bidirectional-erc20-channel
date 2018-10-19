@@ -1,11 +1,9 @@
 // cook mango twist then skin sort option civil have still rather guilt
 /* globals artifacts, contract, web3, it, before, assert */
-const abi = require("ethereumjs-abi");
 const BigNumber = require("bignumber.js");
-const ChannelManager = artifacts.require("./ChannelManager.sol");
-
-const test = require("blue-tape");
 const p = require("util").promisify;
+
+const ChannelManager = artifacts.require("./ChannelManager.sol");
 const SimpleToken = artifacts.require("./SimpleToken.sol");
 
 const {
