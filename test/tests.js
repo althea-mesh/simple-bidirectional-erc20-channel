@@ -38,7 +38,7 @@ contract("ChannelManager", async accounts => {
     ] = await createTokens(SimpleToken);
 
     const ACCT_0_DEPOSIT = web3.utils.toWei('10', "ether");
-    const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
+    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
 
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
@@ -56,7 +56,7 @@ contract("ChannelManager", async accounts => {
     );
 
     const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALACE);
+    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALANCE);
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
@@ -102,8 +102,8 @@ contract("ChannelManager", async accounts => {
     ] = await createTokens(SimpleToken);
     const ACCT_0_DEPOSIT = web3.utils.toWei('10', "ether");
     const ACCT_1_DEPOSIT = web3.utils.toWei('3.1459', "ether");
-    const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
-    const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
+    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
+    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
 
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
@@ -121,7 +121,7 @@ contract("ChannelManager", async accounts => {
     );
 
     const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALACE);
+    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALANCE);
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
@@ -137,7 +137,7 @@ contract("ChannelManager", async accounts => {
     });
 
     const balance1_query = await simpleToken.balanceOf(ACCT_1_ADDR);
-    assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALACE);
+    assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALANCE);
 
     const [
       acct_0_addr,
@@ -177,8 +177,8 @@ contract("ChannelManager", async accounts => {
     ] = await createTokens(SimpleToken);
     const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"));
     const ACCT_1_DEPOSIT = toBN(web3.utils.toWei('3', "ether"));
-    const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
-    const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
+    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
+    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
     const ACCT_0_UPDATE_BALANCE = toBN(ACCT_0_DEPOSIT).minus(
       web3.utils.toWei('1', "ether")
     );
@@ -202,7 +202,7 @@ contract("ChannelManager", async accounts => {
     );
 
     const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALACE);
+    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALANCE);
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
@@ -218,7 +218,7 @@ contract("ChannelManager", async accounts => {
     });
 
     const balance1_query = await simpleToken.balanceOf(ACCT_1_ADDR);
-    assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALACE);
+    assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALANCE);
 
     let hash = await w3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "uint256", "uint256"],
@@ -298,7 +298,7 @@ contract("ChannelManager", async accounts => {
     const ACCT_0_BALANCE = web3.eth.getBalance(ACCT_0_ADDR);
     const ACCT_1_BALANCE = web3.eth.getBalance(ACCT_1_ADDR);
     const ACCT_0_DEPOSIT = web3.utils.toWei('5', "ether");
-    const ACCT_0_CORRECT_BALACE = toBN(ACCT_0_BALANCE).minus(
+    const ACCT_0_CORRECT_BALANCE = toBN(ACCT_0_BALANCE).minus(
       ACCT_0_DEPOSIT
     );
     const CHALLENGE_PERIOD = 6000;
@@ -316,7 +316,7 @@ contract("ChannelManager", async accounts => {
 
     const new_address_balance_0 = await web3.eth.getBalance(ACCT_0_ADDR);
     // gas making this inaccurate? any way to account for that?
-    //assert.equal(new_address_balance_0, ACCT_0_CORRECT_BALACE);
+    //assert.equal(new_address_balance_0, ACCT_0_CORRECT_BALANCE);
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
