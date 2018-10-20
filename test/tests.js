@@ -30,7 +30,7 @@ contract("ChannelManager", async accounts => {
       SIMPLE_TOKEN_SUPPLY,
       AMOUNT_TO_EACH
     ] = await createTokens(SimpleToken);
-    const ACCT_0_DEPOSIT = web3.toWei(10, "ether");
+    const ACCT_0_DEPOSIT = web3.utils.toWei('10', "ether");
     const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
 
@@ -96,8 +96,8 @@ contract("ChannelManager", async accounts => {
       SIMPLE_TOKEN_SUPPLY,
       AMOUNT_TO_EACH
     ] = await createTokens(SimpleToken);
-    const ACCT_0_DEPOSIT = web3.toWei(10, "ether");
-    const ACCT_1_DEPOSIT = web3.toWei(3.1459, "ether");
+    const ACCT_0_DEPOSIT = web3.utils.toWei('10', "ether");
+    const ACCT_1_DEPOSIT = web3.utils.toWei('3.1459', "ether");
     const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
@@ -179,10 +179,10 @@ contract("ChannelManager", async accounts => {
     const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
     const ACCT_0_UPDATE_BALANCE = web3.utils.toBN(ACCT_0_DEPOSIT).minus(
-      web3.toWei(1, "ether")
+      web3.utils.toWei('1', "ether")
     );
     const ACCT_1_UPDATE_BALANCE = web3.utils.toBN(ACCT_1_DEPOSIT).plus(
-      web3.toWei(1, "ether")
+      web3.utils.toWei('1', "ether")
     );
     const CHALLENGE_PERIOD = 6000;
 
@@ -296,7 +296,7 @@ contract("ChannelManager", async accounts => {
     // for some reason we have an initial balance, so lets just use that
     const ACCT_0_BALANCE = web3.eth.getBalance(ACCT_0_ADDR);
     const ACCT_1_BALANCE = web3.eth.getBalance(ACCT_1_ADDR);
-    const ACCT_0_DEPOSIT = web3.toWei(5, "ether");
+    const ACCT_0_DEPOSIT = web3.utils.toWei('5', "ether");
     const ACCT_0_CORRECT_BALACE = web3.utils.toBN(ACCT_0_BALANCE).minus(
       ACCT_0_DEPOSIT
     );
