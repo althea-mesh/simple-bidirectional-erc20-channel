@@ -1,8 +1,6 @@
-const leftPad = require("left-pad");
 const p = require("util").promisify;
 const ethUtils = require("ethereumjs-util");
 const BN = require("bn.js");
-const abi = require("ethereumjs-abi");
 
 const {
   ACCT_0_PRIVKEY,
@@ -73,7 +71,7 @@ async function mineBlocks(count) {
 }
 
 function toSolUint256(num) {
-  return leftPad(num.toString(16), 64, 0);
+  return web3.utils.padLeft(num.toString(16), 64, 0);
 }
 
 function toSolInt256(num) {
@@ -91,7 +89,7 @@ function solSha3(...args) {
     }
 
     if (typeof arg === "number") {
-      return leftPad(arg.toString(16), 64, 0);
+      return web3.utils.padLeft(arg.toString(16), 64, 0);
     }
   });
 
@@ -198,8 +196,8 @@ async function closeChannel(
 }
 
 async function createTokens(SimpleToken) {
-  const SIMPLE_TOKEN_SUPPLY = web3.toWei(10000, "ether");
-  const AMOUNT_TO_EACH = web3.toBigNumber(SIMPLE_TOKEN_SUPPLY).div(2);
+  const SIMPLE_TOKEN_SUPPLY = web3.utils.toWei('10000', "ether");
+  const AMOUNT_TO_EACH = web3.utils.toBN(SIMPLE_TOKEN_SUPPLY).div(2);
   const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR });
   await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH);
   const balance0 = await simpleToken.balanceOf(ACCT_0_ADDR);
@@ -208,27 +206,4 @@ async function createTokens(SimpleToken) {
   assert.equal(balance1, AMOUNT_TO_EACH.toNumber());
 
   return [simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH];
-}
-
-/*   before('create tokens', async () => {
-    const SIMPLE_TOKEN_SUPPLY = web3.toWei(10000, 'ether')
-    const AMOUNT_TO_EACH = web3.toBigNumber(SIMPLE_TOKEN_SUPPLY).div(2)
-    this.simpleToken = await SimpleToken.new({ from: AGENT_A })
-    await this.simpleToken.transfer(AGENT_B, AMOUNT_TO_EACH)
-    const balanceA = await this.simpleToken.balanceOf(AGENT_A)
-    assert.equal(balanceA, AMOUNT_TO_EACH.toNumber())
-    const balanceB = await this.simpleToken.balanceOf(AGENT_B)
-    assert.equal(balanceB, AMOUNT_TO_EACH.toNumber())
-  }) */
-
-function createTxHashToSign(activeId, nonce, balanceA, balanceB) {
-  // fingerprint = keccak256(channelId, nonce, balanceA, balanceB)
-  let hash = abi
-    .soliditySHA3(
-      ["bytes32", "uint256", "uint256", "uint256"],
-      [activeId, nonce, balanceA, balanceB]
-    )
-    .toString("hex");
-  hash = `0x${hash}`;
-  return hash;
 }
