@@ -19,6 +19,7 @@ const {
   takeSnapshot,
   revertSnapshot,
   createTokens,
+  toBN,
 } = require("./utils.js");
 
 contract("ChannelManager", async accounts => {
@@ -174,14 +175,14 @@ contract("ChannelManager", async accounts => {
       SIMPLE_TOKEN_SUPPLY,
       AMOUNT_TO_EACH
     ] = await createTokens(SimpleToken);
-    const ACCT_0_DEPOSIT = web3.utils.toBN(web3.utils.toWei('10', "ether"));
-    const ACCT_1_DEPOSIT = web3.utils.toBN(web3.utils.toWei('3', "ether"));
+    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"));
+    const ACCT_1_DEPOSIT = toBN(web3.utils.toWei('3', "ether"));
     const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
-    const ACCT_0_UPDATE_BALANCE = web3.utils.toBN(ACCT_0_DEPOSIT).minus(
+    const ACCT_0_UPDATE_BALANCE = toBN(ACCT_0_DEPOSIT).minus(
       web3.utils.toWei('1', "ether")
     );
-    const ACCT_1_UPDATE_BALANCE = web3.utils.toBN(ACCT_1_DEPOSIT).plus(
+    const ACCT_1_UPDATE_BALANCE = toBN(ACCT_1_DEPOSIT).plus(
       web3.utils.toWei('1', "ether")
     );
     const CHALLENGE_PERIOD = 6000;
@@ -219,15 +220,17 @@ contract("ChannelManager", async accounts => {
     const balance1_query = await simpleToken.balanceOf(ACCT_1_ADDR);
     assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALACE);
 
-    const hash = createTxHashToSign(
-      activeId,
-      1,
-      ACCT_0_UPDATE_BALANCE.toString(),
-      ACCT_1_UPDATE_BALANCE.toString()
-    );
+    let hash = await w3.eth.abi.encodeParameters(
+      ["bytes32", "uint256", "uint256", "uint256"],
+      [activeId, nonce, balanceA, balanceB]
+    )
 
-    const sig0 = web3.eth.sign(ACCT_0_ADDR, hash);
-    const sig1 = web3.eth.sign(ACCT_1_ADDR, hash);
+    console.log('hashy', hash)
+    const rawTxn = await w3.eth.accounts.signTransaction(txn, account.privateKey)
+
+
+    const sig0 = web3.eth.personal.sign(ACCT_0_ADDR, hash);
+    const sig1 = web3.eth.personal.sign(ACCT_1_ADDR, hash);
 
     const is_valid = await channelManager.isValidStateUpdate(
       activeId,
@@ -286,8 +289,8 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance0.toNumber(), ACCT_0_UPDATE_BALANCE); // uint balance 0; // for state update
     assert.equal(balance1.toNumber(), ACCT_1_UPDATE_BALANCE); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
-
     */
+
   });
 
   it("newChannel, eth opened but not joined", async () => {
@@ -295,7 +298,7 @@ contract("ChannelManager", async accounts => {
     const ACCT_0_BALANCE = web3.eth.getBalance(ACCT_0_ADDR);
     const ACCT_1_BALANCE = web3.eth.getBalance(ACCT_1_ADDR);
     const ACCT_0_DEPOSIT = web3.utils.toWei('5', "ether");
-    const ACCT_0_CORRECT_BALACE = web3.utils.toBN(ACCT_0_BALANCE).minus(
+    const ACCT_0_CORRECT_BALACE = toBN(ACCT_0_BALANCE).minus(
       ACCT_0_DEPOSIT
     );
     const CHALLENGE_PERIOD = 6000;
