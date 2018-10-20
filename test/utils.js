@@ -1,6 +1,6 @@
 const p = require("util").promisify;
 const ethUtils = require("ethereumjs-util");
-const BN = require("bn.js");
+const toBN = web3.utils.toBN
 
 const {
   ACCT_0_PRIVKEY,
@@ -24,10 +24,11 @@ module.exports = {
   closeChannel,
   createTokens,
   log,
+  toBN
 };
 
 
-const log = (...args) => console.log(...args)
+function log (...args) {console.log(...args)}
 
 function sleep(time) {
   return new Promise(resolve => {
@@ -179,14 +180,15 @@ async function closeChannel(
 }
 
 async function createTokens(SimpleToken) {
-  const SIMPLE_TOKEN_SUPPLY = web3.utils.toWei('10000', "ether");
-  const AMOUNT_TO_EACH = web3.utils.toBN(SIMPLE_TOKEN_SUPPLY).div(2);
-  const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR });
-  await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH);
-  const balance0 = await simpleToken.balanceOf(ACCT_0_ADDR);
-  assert.equal(balance0, AMOUNT_TO_EACH.toNumber());
-  const balance1 = await simpleToken.balanceOf(ACCT_1_ADDR);
-  assert.equal(balance1, AMOUNT_TO_EACH.toNumber());
+  const SIMPLE_TOKEN_SUPPLY = await web3.utils.toWei('10000', "ether")
+  const AMOUNT_TO_EACH = (await toBN(SIMPLE_TOKEN_SUPPLY)).div(await toBN(2))
+  const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR })
+  await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH.toString(), {
+    from: ACCT_0_ADDR
+  })
 
-  return [simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH];
+  assert((await simpleToken.balanceOf(ACCT_0_ADDR)).eq(AMOUNT_TO_EACH))
+  assert((await simpleToken.balanceOf(ACCT_1_ADDR)).eq(AMOUNT_TO_EACH))
+
+  return [simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH]
 }
