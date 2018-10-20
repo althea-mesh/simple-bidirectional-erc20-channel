@@ -11,8 +11,6 @@ const {
 
 module.exports = {
   sleep,
-  takeSnapshot,
-  revertSnapshot,
   solSha3,
   sign,
   ecrecover,
@@ -25,8 +23,11 @@ module.exports = {
   toSolInt256,
   closeChannel,
   createTokens,
-  createTxHashToSign
+  log,
 };
+
+
+const log = (...args) => console.log(...args)
 
 function sleep(time) {
   return new Promise(resolve => {
@@ -35,24 +36,6 @@ function sleep(time) {
 }
 
 let snapshotInc = 0;
-
-async function takeSnapshot() {
-  let res = await p(web3.currentProvider.sendAsync.bind(web3.currentProvider))({
-    jsonrpc: "2.0",
-    method: "evm_snapshot",
-    id: snapshotInc++
-  });
-  return res.result;
-}
-
-async function revertSnapshot(snapshotId) {
-  await p(web3.currentProvider.sendAsync.bind(web3.currentProvider))({
-    jsonrpc: "2.0",
-    method: "evm_revert",
-    params: [snapshotId],
-    id: snapshotInc++
-  });
-}
 
 async function mineBlock() {
   await p(web3.currentProvider.sendAsync.bind(web3.currentProvider))({

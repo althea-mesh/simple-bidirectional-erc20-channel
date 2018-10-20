@@ -19,22 +19,27 @@ const {
   takeSnapshot,
   revertSnapshot,
   createTokens,
-  createTxHashToSign
 } = require("./utils.js");
 
 contract("ChannelManager", async accounts => {
+
+  let channelManager
+  beforeEach(async () => {
+    channelManager = await ChannelManager.new()
+  })
+
+
   it("newChannel, token opened", async () => {
-    const snapshot = await takeSnapshot();
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
       AMOUNT_TO_EACH
     ] = await createTokens(SimpleToken);
+
     const ACCT_0_DEPOSIT = web3.utils.toWei('10', "ether");
     const ACCT_0_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
 
-    const channelManager = await ChannelManager.deployed();
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
       from: ACCT_0_ADDR
     });
@@ -86,11 +91,9 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance1, 0); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
 
-    await revertSnapshot(snapshot);
   });
 
   it("newChannel, token joined", async () => {
-    const snapshot = await takeSnapshot();
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
@@ -102,7 +105,6 @@ contract("ChannelManager", async accounts => {
     const ACCT_1_CORRECT_BALACE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
     const CHALLENGE_PERIOD = 6000;
 
-    const channelManager = await ChannelManager.deployed();
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
       from: ACCT_0_ADDR
     });
@@ -164,11 +166,9 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance1, ACCT_1_DEPOSIT); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
 
-    await revertSnapshot(snapshot);
   });
 
   it.only("newChannel, token updated", async () => {
-    const snapshot = await takeSnapshot();
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
@@ -186,7 +186,6 @@ contract("ChannelManager", async accounts => {
     );
     const CHALLENGE_PERIOD = 6000;
 
-    const channelManager = await ChannelManager.deployed();
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
       from: ACCT_0_ADDR
     });
@@ -288,11 +287,10 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance1.toNumber(), ACCT_1_UPDATE_BALANCE); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
 
-    await revertSnapshot(snapshot);
+    */
   });
 
   it("newChannel, eth opened but not joined", async () => {
-    const snapshot = await takeSnapshot();
     // for some reason we have an initial balance, so lets just use that
     const ACCT_0_BALANCE = web3.eth.getBalance(ACCT_0_ADDR);
     const ACCT_1_BALANCE = web3.eth.getBalance(ACCT_1_ADDR);
@@ -301,8 +299,6 @@ contract("ChannelManager", async accounts => {
       ACCT_0_DEPOSIT
     );
     const CHALLENGE_PERIOD = 6000;
-
-    const channelManager = await ChannelManager.deployed();
 
     await channelManager.openChannel(
       ACCT_1_ADDR,
@@ -353,6 +349,5 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance1, 0); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
 
-    await revertSnapshot(snapshot);
   });
 });
