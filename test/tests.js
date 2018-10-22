@@ -1,7 +1,3 @@
-// cook mango twist then skin sort option civil have still rather guilt
-/* globals artifacts, contract, web3, it, before, assert */
-const p = require("util").promisify;
-
 const ChannelManager = artifacts.require("./ChannelManager.sol");
 const SimpleToken = artifacts.require("./SimpleToken.sol");
 
@@ -20,6 +16,7 @@ const {
   revertSnapshot,
   createTokens,
   toBN,
+  log,
 } = require("./utils.js");
 
 contract("ChannelManager", async accounts => {
@@ -174,64 +171,67 @@ contract("ChannelManager", async accounts => {
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
       AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken);
-    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"));
-    const ACCT_1_DEPOSIT = toBN(web3.utils.toWei('3', "ether"));
-    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_0_DEPOSIT;
-    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.toNumber() - ACCT_1_DEPOSIT;
-    const ACCT_0_UPDATE_BALANCE = toBN(ACCT_0_DEPOSIT).minus(
-      web3.utils.toWei('1', "ether")
-    );
-    const ACCT_1_UPDATE_BALANCE = toBN(ACCT_1_DEPOSIT).plus(
-      web3.utils.toWei('1', "ether")
-    );
-    const CHALLENGE_PERIOD = 6000;
+    ] = await createTokens(SimpleToken)
+
+    const ACCT_0_DEPOSIT = await toBN(web3.utils.toWei('10', "ether"))
+    const ACCT_1_DEPOSIT = await toBN(web3.utils.toWei('3', "ether"))
+    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
+    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_1_DEPOSIT)
+    const ACCT_0_UPDATE_BALANCE = ACCT_0_DEPOSIT.sub(
+      await toBN(await web3.utils.toWei('1', "ether"))
+    )
+    const ACCT_1_UPDATE_BALANCE = ACCT_1_DEPOSIT.add(
+      await toBN(await web3.utils.toWei('1', "ether"))
+    )
+    const CHALLENGE_PERIOD = 6000
 
     await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
       from: ACCT_0_ADDR
-    });
+    })
 
     await channelManager.openChannel(
       ACCT_1_ADDR,
       simpleToken.address,
       ACCT_0_DEPOSIT,
       CHALLENGE_PERIOD,
-      {
-        from: ACCT_0_ADDR
-      }
-    );
+      { from: ACCT_0_ADDR }
+    )
 
-    const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert.equal(balance0_query.toNumber(), ACCT_0_CORRECT_BALANCE);
+    assert(
+      (await simpleToken.balanceOf(ACCT_0_ADDR)).eq(ACCT_0_CORRECT_BALANCE)
+    )
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
       ACCT_1_ADDR,
       simpleToken.address
-    );
+    )
 
     await simpleToken.approve(channelManager.address, ACCT_1_DEPOSIT, {
       from: ACCT_1_ADDR
-    });
+    })
     await channelManager.joinChannel(activeId, ACCT_1_DEPOSIT, {
       from: ACCT_1_ADDR
-    });
-
-    const balance1_query = await simpleToken.balanceOf(ACCT_1_ADDR);
-    assert.equal(balance1_query.toNumber(), ACCT_1_CORRECT_BALANCE);
-
-    let hash = await w3.eth.abi.encodeParameters(
-      ["bytes32", "uint256", "uint256", "uint256"],
-      [activeId, nonce, balanceA, balanceB]
+    })
+    
+    assert(
+      (await simpleToken.balanceOf(ACCT_1_ADDR)).eq(ACCT_1_CORRECT_BALANCE)
     )
 
-    console.log('hashy', hash)
-    const rawTxn = await w3.eth.accounts.signTransaction(txn, account.privateKey)
+    let nonce = 1
+    let hash = await web3.eth.abi.encodeParameters(
+      ["bytes32", "uint256", "uint256", "uint256"],
+      [activeId, nonce, ACCT_1_UPDATE_BALANCE, ACCT_1_UPDATE_BALANCE]
+    )
+    const sig0 = await web3.eth.sign(hash, ACCT_0_ADDR)
+    const sig1 = await web3.eth.sign(hash, ACCT_1_ADDR)
 
+    log(await ecrecover(hash, sig0))
+    log(await ecrecover(hash, sig1))
+    console.log('hashy', sig0)
+    console.log('hashy', sig1)
 
-    const sig0 = web3.eth.personal.sign(ACCT_0_ADDR, hash);
-    const sig1 = web3.eth.personal.sign(ACCT_1_ADDR, hash);
-
+    /*
     const is_valid = await channelManager.isValidStateUpdate(
       activeId,
       1, // update with higher nonce
