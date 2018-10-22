@@ -1,7 +1,6 @@
 const p = require("util").promisify;
 const ethUtils = require("ethereumjs-util");
 const toBN = web3.utils.toBN
-
 const {
   ACCT_0_PRIVKEY,
   ACCT_0_ADDR,
@@ -183,7 +182,7 @@ async function createTokens(SimpleToken) {
   const SIMPLE_TOKEN_SUPPLY = await web3.utils.toWei('10000', "ether")
   const AMOUNT_TO_EACH = (await toBN(SIMPLE_TOKEN_SUPPLY)).div(await toBN(2))
   const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR })
-  await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH.toString(), {
+  await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH, {
     from: ACCT_0_ADDR
   })
 
