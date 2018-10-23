@@ -8,14 +8,12 @@
   },
   "dependencies": {
     "dotenv": "^6.1.0",
-    "eslint": "^5.7.0",
     "ethers": "^4.0.7",
     "ganache-cli": "^6.1.8",
-    "openzeppelin-solidity": "^1.12.0",
-    "truffle-hdwallet-provider": "0.0.6",
-    "truffle-hdwallet-provider-privkey": "^0.3.0"
+    "openzeppelin-solidity": "^1.12.0"
   },
   "devDependencies": {
+    "eslint": "^5.7.0",
     "prettier": "^1.14.3",
     "truffle": "^5.0.0-beta.1"
   },

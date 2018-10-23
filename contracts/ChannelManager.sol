@@ -1,7 +1,7 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.4.23;
 
 import "./ECTools.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 contract ChannelManager {
     event ChannelOpen(
