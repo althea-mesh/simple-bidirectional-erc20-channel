@@ -221,10 +221,10 @@ contract("ChannelManager", async accounts => {
       (await simpleToken.balanceOf(ACCT_1_ADDR)).eq(ACCT_1_CORRECT_BALANCE)
     )
 
-    let nonce = 1
+    let updateNonce = 1
     let fingerprint = web3.utils.soliditySha3(
       activeId,
-      nonce,
+      updateNonce,
       ACCT_0_UPDATE_BALANCE,
       ACCT_1_UPDATE_BALANCE,
     )
@@ -236,7 +236,7 @@ contract("ChannelManager", async accounts => {
 
     const is_valid = await channelManager.isValidStateUpdate(
       activeId,
-      1, // update with higher nonce
+      updateNonce, // update with higher nonce
       ACCT_0_UPDATE_BALANCE,
       ACCT_1_UPDATE_BALANCE,
       sig0,
@@ -244,26 +244,26 @@ contract("ChannelManager", async accounts => {
       true,
       true,
       { from: ACCT_0_ADDR }
-    );
-    assert(is_valid);
+    )
+    assert(is_valid)
 
     await channelManager.updateState(
       activeId,
-      1, // update with higher nonce
+      updateNonce, // update with higher nonce
       ACCT_0_UPDATE_BALANCE.toString(),
       ACCT_1_UPDATE_BALANCE.toString(),
       sig0,
       sig1,
       { from: ACCT_0_ADDR }
     );
-    /*
 
     console.log(
       "testing if state update is valid",
-      ACCT_0_UPDATE_BALANCE.toNumber(),
+      ACCT_0_UPDATE_BALANCE.toString(),
       " ",
-      ACCT_1_UPDATE_BALANCE.toNumber()
+      ACCT_1_UPDATE_BALANCE.toString()
     );
+
     const [
       acct_0_addr,
       acct_1_addr,
@@ -277,21 +277,23 @@ contract("ChannelManager", async accounts => {
       balance0,
       balance1,
       challengeStartedBy
-    ] = await channelManager.getChannel(activeId);
+    ] = Object.values(await channelManager.getChannel(activeId));
 
-    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0;
-    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1;
-    assert.equal(tokenContract, simpleToken.address); // address tokenContract;
-    assert.equal(deposit0, ACCT_0_DEPOSIT); // uint depositA;
-    assert.equal(deposit1, ACCT_1_DEPOSIT); // uint depositB;
-    assert.equal(status, CHANNEL_STATUS.JOINED); // ChannelStatus status;
-    assert.equal(challenge, CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce, 0); // uint nonce;
-    assert.equal(closeTime, 0); // uint closeTime;
-    assert.equal(balance0.toNumber(), ACCT_0_UPDATE_BALANCE); // uint balance 0; // for state update
-    assert.equal(balance1.toNumber(), ACCT_1_UPDATE_BALANCE); // uint balance 1; // for state update
+    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0
+    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1
+    assert.equal(tokenContract, simpleToken.address); // address tokenContract
+    // Using .eq here because both values are BN.js.
+    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA
+    assert(deposit1.eq(ACCT_1_DEPOSIT)); // uint depositB
+
+    assert.equal(status.toNumber(), CHANNEL_STATUS.JOINED); // ChannelStatus status
+
+    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge
+    assert.equal(nonce.toNumber(), updateNonce); // uint nonce;
+    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
+    assert(balance0.eq(ACCT_0_UPDATE_BALANCE)); // uint balance 0
+    assert(balance1.eq(ACCT_1_UPDATE_BALANCE)); // uint balance 1
     assert.equal(challengeStartedBy, 0);
-    */
 
   });
 
