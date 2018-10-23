@@ -1,5 +1,6 @@
 const ChannelManager = artifacts.require("./ChannelManager.sol");
 const SimpleToken = artifacts.require("./SimpleToken.sol");
+const ethers = require("ethers")
 
 const {
   ACCT_0_PRIVKEY,
@@ -219,24 +220,23 @@ contract("ChannelManager", async accounts => {
     )
 
     let nonce = 1
-    let hash = await web3.eth.abi.encodeParameters(
-      ["bytes32", "uint256", "uint256", "uint256"],
-      [activeId, nonce, ACCT_1_UPDATE_BALANCE, ACCT_1_UPDATE_BALANCE]
+    let fingerprint = web3.utils.soliditySha3(
+      activeId,
+      nonce,
+      ACCT_0_UPDATE_BALANCE,
+      ACCT_1_UPDATE_BALANCE,
     )
-    const sig0 = await web3.eth.sign(hash, ACCT_0_ADDR)
-    const sig1 = await web3.eth.sign(hash, ACCT_1_ADDR)
 
-    log(await ecrecover(hash, sig0))
-    log(await ecrecover(hash, sig1))
-    console.log('hashy', sig0)
-    console.log('hashy', sig1)
+    let signer0 = new ethers.utils.SigningKey(ACCT_0_PRIVKEY)
+    let signer1 = new ethers.utils.SigningKey(ACCT_1_PRIVKEY)
+    let sig0 = ethers.utils.joinSignature(signer0.signDigest(fingerprint))
+    let sig1 = ethers.utils.joinSignature(signer1.signDigest(fingerprint))
 
-    /*
     const is_valid = await channelManager.isValidStateUpdate(
       activeId,
       1, // update with higher nonce
-      ACCT_0_UPDATE_BALANCE.toString(),
-      ACCT_1_UPDATE_BALANCE.toString(),
+      ACCT_0_UPDATE_BALANCE,
+      ACCT_1_UPDATE_BALANCE,
       sig0,
       sig1,
       true,
@@ -244,6 +244,7 @@ contract("ChannelManager", async accounts => {
       { from: ACCT_0_ADDR }
     );
     assert.equal(is_valid, true);
+    /*
 
     // TODO why does this fail?
     await channelManager.updateState(
