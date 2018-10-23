@@ -300,15 +300,13 @@ contract("ChannelManager", async accounts => {
 
   it("newChannel, eth opened but not joined", async () => {
     // for some reason we have an initial balance, so lets just use that
-    const ACCT_0_BALANCE = web3.eth.getBalance(ACCT_0_ADDR);
-    const ACCT_1_BALANCE = web3.eth.getBalance(ACCT_1_ADDR);
-    const ACCT_0_DEPOSIT = web3.utils.toWei('5', "ether");
-    const ACCT_0_CORRECT_BALANCE = toBN(ACCT_0_BALANCE).minus(
-      ACCT_0_DEPOSIT
-    );
+    const ACCT_0_BALANCE = toBN(await web3.eth.getBalance(ACCT_0_ADDR));
+    const ACCT_1_BALANCE = toBN(await web3.eth.getBalance(ACCT_1_ADDR));
+    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('5', "ether"));
+    const ACCT_0_CORRECT_BALANCE = ACCT_0_BALANCE.sub(ACCT_0_DEPOSIT);
     const CHALLENGE_PERIOD = 6000;
 
-    await channelManager.openChannel(
+    let txn = await channelManager.openChannel(
       ACCT_1_ADDR,
       0,
       ACCT_0_DEPOSIT,
@@ -319,9 +317,9 @@ contract("ChannelManager", async accounts => {
       }
     );
 
-    const new_address_balance_0 = await web3.eth.getBalance(ACCT_0_ADDR);
-    // gas making this inaccurate? any way to account for that?
-    //assert.equal(new_address_balance_0, ACCT_0_CORRECT_BALANCE);
+    let txnCost = toBN((await web3.eth.getGasPrice())*txn.receipt.gasUsed)
+    const new_address_balance_0 = toBN(await web3.eth.getBalance(ACCT_0_ADDR));
+    assert(new_address_balance_0.eq(ACCT_0_CORRECT_BALANCE.sub(txnCost)));
 
     const activeId = await channelManager.activeIds.call(
       ACCT_0_ADDR,
@@ -342,20 +340,20 @@ contract("ChannelManager", async accounts => {
       balance0,
       balance1,
       challengeStartedBy
-    ] = await channelManager.getChannel(activeId);
+    ] = Object.values(await channelManager.getChannel(activeId));
+
 
     assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0;
     assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1;
     assert.equal(tokenContract, 0); // address tokenContract;
-    assert.equal(deposit0.toNumber(), ACCT_0_DEPOSIT); // uint depositA;
-    assert.equal(deposit1, 0); // uint depositB;
-    assert.equal(status, CHANNEL_STATUS.OPEN); // ChannelStatus status;
-    assert.equal(challenge, CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce, 0); // uint nonce;
-    assert.equal(closeTime, 0); // uint closeTime;
-    assert.equal(balance0.toNumber(), ACCT_0_DEPOSIT); // uint balance 0; // for state update
-    assert.equal(balance1, 0); // uint balance 1; // for state update
+    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA;
+    assert.equal(deposit1.toNumber(), 0); // uint depositB;
+    assert.equal(status.toNumber(), CHANNEL_STATUS.OPEN); // ChannelStatus status;
+    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge;
+    assert.equal(nonce.toNumber(), 0); // uint nonce;
+    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
+    assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
+    assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
-
   });
 });
