@@ -26,8 +26,6 @@ function sleep(time) {
   });
 }
 
-let snapshotInc = 0;
-
 async function mineBlock() {
   await p(web3.currentProvider.sendAsync.bind(web3.currentProvider))({
     jsonrpc: "2.0",
@@ -43,15 +41,6 @@ async function mineBlocks(count) {
     i++;
   }
 }
-
-function toSolUint256(num) {
-  return web3.utils.padLeft(num.toString(16), 64, 0);
-}
-
-function toSolInt256(num) {
-  return new BN(num).toTwos(256).toString(16, 64);
-}
-
 
 function filterLogs(logs) {
   return logs.map(log => [log.event, log.args]);

@@ -13,11 +13,13 @@ const {
 } = require("./constants.js");
 
 const {
-  takeSnapshot,
-  revertSnapshot,
   createTokens,
   toBN,
   log,
+  filterLogs,
+  mineBlock,
+  mineBlocks,
+  sleep
 } = require("./utils.js");
 
 contract("ChannelManager", async accounts => {
@@ -243,10 +245,8 @@ contract("ChannelManager", async accounts => {
       true,
       { from: ACCT_0_ADDR }
     );
-    assert.equal(is_valid, true);
-    /*
+    assert(is_valid);
 
-    // TODO why does this fail?
     await channelManager.updateState(
       activeId,
       1, // update with higher nonce
@@ -256,6 +256,7 @@ contract("ChannelManager", async accounts => {
       sig1,
       { from: ACCT_0_ADDR }
     );
+    /*
 
     console.log(
       "testing if state update is valid",
