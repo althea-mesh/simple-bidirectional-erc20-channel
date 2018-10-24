@@ -28,7 +28,7 @@ contract("ChannelManager", async accounts => {
 
   let channelManager
   before(async () => {
-    channelManager = await ChannelManager.new()
+    channelManager = await ChannelManager.deployed()
   })
 
   it("newChannel, token opened", async () => {
