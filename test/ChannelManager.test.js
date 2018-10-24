@@ -19,18 +19,21 @@ const {
   filterLogs,
   mineBlock,
   mineBlocks,
-  sleep
+  sleep,
+  takeSnapshot,
+  revertSnapshot
 } = require("./utils.js");
 
 contract("ChannelManager", async accounts => {
 
   let channelManager
-  beforeEach(async () => {
+  before(async () => {
     channelManager = await ChannelManager.new()
   })
 
-
   it("newChannel, token opened", async () => {
+    const snapshot = await takeSnapshot()
+
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
@@ -93,9 +96,12 @@ contract("ChannelManager", async accounts => {
     assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
 
+    await revertSnapshot(snapshot);
   });
 
   it("newChannel, token joined", async () => {
+    const snapshot = await takeSnapshot()
+
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
@@ -168,9 +174,13 @@ contract("ChannelManager", async accounts => {
     assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
     assert(balance1.eq(ACCT_1_DEPOSIT)); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
+
+    await revertSnapshot(snapshot);
   });
 
   it("newChannel, token updated", async () => {
+    const snapshot = await takeSnapshot()
+
     const [
       simpleToken,
       SIMPLE_TOKEN_SUPPLY,
@@ -296,9 +306,12 @@ contract("ChannelManager", async accounts => {
     assert(balance1.eq(ACCT_1_UPDATE_BALANCE)); // uint balance 1
     assert.equal(challengeStartedBy, 0);
 
+    await revertSnapshot(snapshot);
   });
 
   it("newChannel, eth opened but not joined", async () => {
+    const snapshot = await takeSnapshot()
+
     // for some reason we have an initial balance, so lets just use that
     const ACCT_0_BALANCE = toBN(await web3.eth.getBalance(ACCT_0_ADDR));
     const ACCT_1_BALANCE = toBN(await web3.eth.getBalance(ACCT_1_ADDR));
@@ -355,5 +368,7 @@ contract("ChannelManager", async accounts => {
     assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
     assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
     assert.equal(challengeStartedBy, 0);
+
+    await revertSnapshot(snapshot);
   });
 });
