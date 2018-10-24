@@ -13,17 +13,38 @@ module.exports = {
   filterLogs,
   mineBlocks,
   createTokens,
+  takeSnapshot,
+  revertSnapshot,
   log,
   toBN
 };
 
-
 function log (...args) {console.log(...args)}
+
+let snapshotInc = 0;
+
+async function takeSnapshot() {
+  const {error, result} = await p(web3.currentProvider.send)({
+    jsonrpc: "2.0",
+    method: "evm_snapshot",
+    id: snapshotInc++
+  })
+  return result
+}
+
+async function revertSnapshot(snapshotId) {
+  await p(web3.currentProvider.send)({
+    jsonrpc: "2.0",
+    method: "evm_revert",
+    params: [snapshotId],
+    id: snapshotInc++
+  })
+}
 
 function sleep(time) {
   return new Promise(resolve => {
     setTimeout(resolve, time);
-  });
+  })
 }
 
 async function mineBlock() {
