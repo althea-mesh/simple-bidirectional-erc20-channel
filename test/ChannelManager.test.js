@@ -12,29 +12,24 @@ const {
   createTokens,
   toBN,
   log,
-  filterLogs,
-  mineBlock,
-  mineBlocks,
-  sleep,
   takeSnapshot,
-  revertSnapshot
+  revertSnapshot,
+  openChannel,
 } = require("./utils.js");
 
 contract("ChannelManager", () => {
 
   let channelManager
+  let simpleToken, AMOUNT_TO_EACH
   before(async () => {
+    let out = await createTokens(SimpleToken)
+    simpleToken = out.simpleToken
+    AMOUNT_TO_EACH = out.AMOUNT_TO_EACH
     channelManager = await ChannelManager.deployed()
   })
 
   it("newChannel, token opened", async () => {
     const snapshot = await takeSnapshot()
-
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken)
 
     const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"))
     const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
@@ -98,11 +93,6 @@ contract("ChannelManager", () => {
   it("newChannel, token joined", async () => {
     const snapshot = await takeSnapshot()
 
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken);
     const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"))
     const ACCT_1_DEPOSIT = toBN(web3.utils.toWei('3.1459', "ether"))
     const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
@@ -174,15 +164,8 @@ contract("ChannelManager", () => {
     await revertSnapshot(snapshot);
   });
 
-  it("newChannel, token updated", async () => {
+  it.only("newChannel, token updated", async () => {
     const snapshot = await takeSnapshot()
-
-
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken)
 
     const ACCT_0_DEPOSIT = await toBN(web3.utils.toWei('10', "ether"))
     const ACCT_1_DEPOSIT = await toBN(web3.utils.toWei('3', "ether"))
