@@ -20,7 +20,7 @@
   "scripts": {
     "test": "truffle test",
     "migrate": "truffle migrate --reset",
-    "ganache": "ganache-cli -m 'cook mango twist then skin sort option civil have still rather guilt'",
+    "ganache": "ganache-cli -m 'cook mango twist then skin sort option civil have still rather guilt' -e 10000000",
     "prettier": "prettier --write **/**.js"
   },
   "author": "",
