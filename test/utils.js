@@ -26,7 +26,8 @@ module.exports = {
   openChannel,
   finalAsserts,
   checkBalanceAfterGas,
-  provider
+  provider,
+  sign
 };
 
 function log (...args) {console.log(...args)}
@@ -91,7 +92,7 @@ async function createTokens(SimpleToken) {
   return {simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH}
 }
 
-const sign = (signer, message) => {
+async function sign (signer, message) {
   return joinSignature(signer.signDigest(message))
 
 }
@@ -113,7 +114,7 @@ async function finalAsserts({
   instance,
   agentA,
   agentB,
-  tokenAddr,
+  tokenAddr = ZERO,
   channelStatus,
   challengePeriod = 0,
   channelNonce = 0,
@@ -122,7 +123,7 @@ async function finalAsserts({
   expectedDeposit1 = toBN('0'),
   expectedBalance0 = toBN('0'),
   expectedBalance1 = toBN('0'),
-  expectedChallenger  = '0',
+  expectedChallenger  = ZERO,
   }
 ) {
 
@@ -147,18 +148,22 @@ async function finalAsserts({
     challengeStartedBy
   ] = Object.values(await instance.getChannel(activeId))
 
-  assert.equal(acct_0_addr, agentA); // address agent 0;
-  assert.equal(acct_1_addr, agentB); // address agent 1;
-  assert.equal(tokenContract, tokenAddr); // address tokenContract;
-  assert(deposit0.eq(expectedDeposit0)); // uint depositA;
-  assert(deposit1.eq(expectedDeposit1)); // uint depositB;
-  assert(balance0.eq(expectedBalance0)); // uint balance 0
-  assert(balance1.eq(expectedBalance1)); // uint balance 1
-  assert.equal(status.toNumber(), channelStatus); // ChannelStatus
-  assert.equal(challenge.toNumber(), challengePeriod); // uint challenge;
-  assert.equal(nonce.toNumber(), channelNonce); // uint nonce;
-  assert.equal(closeTime.toNumber(), expectedCloseTime); // uint closeTime;
-  assert.equal(ZERO, challengeStartedBy); // uint closeTime;
+  assert.equal(acct_0_addr, agentA, "AgentA not equal")
+  assert.equal(acct_1_addr, agentB, "AgentB not equal")
+  assert.equal(tokenContract, tokenAddr, "Token address not equal")
+  assert(deposit0.eq(expectedDeposit0), "Expected deposit0 not equal")
+  assert(deposit1.eq(expectedDeposit1), "Expected deposit1 not equal" )
+  assert(balance0.eq(expectedBalance0), "Expected balance0 not equal")
+  assert(balance1.eq(expectedBalance1), "Expected balance1 not equal")
+  assert.equal(status.toNumber(), channelStatus, "Channel status not equal")
+  assert.equal(
+    challenge.toNumber(),
+    challengePeriod,
+    "Challenge period not equal"
+  )
+  assert.equal(nonce.toNumber(), channelNonce, "Nonce not equal")
+  assert.equal(closeTime.toNumber(), expectedCloseTime, "Close time not equal")
+  assert.equal(expectedChallenger, challengeStartedBy, "Challenger not equal")
 }
 
 // contract functions
