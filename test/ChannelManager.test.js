@@ -15,6 +15,9 @@ const {
   takeSnapshot,
   revertSnapshot,
   openChannel,
+  checkBalanceAfterGas,
+  provider,
+  finalAsserts
 } = require("./utils.js");
 
 contract("ChannelManager", () => {
@@ -164,7 +167,7 @@ contract("ChannelManager", () => {
     await revertSnapshot(snapshot);
   });
 
-  it.only("newChannel, token updated", async () => {
+  it("newChannel, token updated", async () => {
     const snapshot = await takeSnapshot()
 
     const ACCT_0_DEPOSIT = await toBN(web3.utils.toWei('10', "ether"))
@@ -284,62 +287,30 @@ contract("ChannelManager", () => {
   it("newChannel, eth opened but not joined", async () => {
     const snapshot = await takeSnapshot()
 
-    // for some reason we have an initial balance, so lets just use that
-    const ACCT_0_BALANCE = toBN(await web3.eth.getBalance(ACCT_0.address));
-    const ACCT_1_BALANCE = toBN(await web3.eth.getBalance(ACCT_1.address));
-    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('5', "ether"));
-    const ACCT_0_CORRECT_BALANCE = ACCT_0_BALANCE.sub(ACCT_0_DEPOSIT);
-    const CHALLENGE_PERIOD = 6000;
+    let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
+    let deposit = toBN(web3.utils.toWei('1', "ether"))
+    const challengePeriod = 6000
 
-    let txn = await channelManager.openChannel(
-      ACCT_1.address,
-      0,
-      ACCT_0_DEPOSIT,
-      CHALLENGE_PERIOD,
-      {
-        from: ACCT_0.address,
-        value: ACCT_0_DEPOSIT
-      }
-    );
+    let txn = await openChannel({
+      instance: channelManager,
+      channelCreator: ACCT_0.address,
+      to: ACCT_1.address,
+      deposit: deposit,
+      challengePeriod: challengePeriod,
+    })
 
-    let txnCost = toBN((await web3.eth.getGasPrice())*txn.receipt.gasUsed)
-    const new_address_balance_0 = toBN(await web3.eth.getBalance(ACCT_0.address));
-    assert(new_address_balance_0.eq(ACCT_0_CORRECT_BALANCE.sub(txnCost)));
+    await checkBalanceAfterGas(txn, oldBalance)
 
-    const activeId = await channelManager.activeIds.call(
-      ACCT_0.address,
-      ACCT_1.address,
-      0
-    );
-
-    const [
-      acct_0_addr,
-      acct_1_addr,
-      tokenContract,
-      deposit0,
-      deposit1,
-      status,
-      challenge,
-      nonce,
-      closeTime,
-      balance0,
-      balance1,
-      challengeStartedBy
-    ] = Object.values(await channelManager.getChannel(activeId));
-
-
-    assert.equal(acct_0_addr, ACCT_0.address); // address agent 0;
-    assert.equal(acct_1_addr, ACCT_1.address); // address agent 1;
-    assert.equal(tokenContract, 0); // address tokenContract;
-    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA;
-    assert.equal(deposit1.toNumber(), 0); // uint depositB;
-    assert.equal(status.toNumber(), CHANNEL_STATUS.OPEN); // ChannelStatus status;
-    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce.toNumber(), 0); // uint nonce;
-    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
-    assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
-    assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
-    assert.equal(challengeStartedBy, 0);
+    await finalAsserts({
+      instance: channelManager,
+      agentA: ACCT_0.address,
+      agentB: ACCT_1.address,
+      tokenAddr: 0,
+      expectedDeposit0: deposit,
+      expectedBalance0: deposit,  
+      channelStatus: CHANNEL_STATUS.OPEN,
+      challengePeriod: challengePeriod 
+    })
 
     await revertSnapshot(snapshot);
   });

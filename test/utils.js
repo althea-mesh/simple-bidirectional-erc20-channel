@@ -1,12 +1,18 @@
 const p = require("util").promisify;
 const toBN = web3.utils.toBN
+const ethers = require("ethers")
+const { joinSignature } = require("ethers").utils
+const SimpleToken = artifacts.require("./SimpleToken.sol")
+
+let provider = new ethers.providers.Web3Provider(web3.currentProvider)
 
 const {
-  ACCT_0_PRIVKEY,
-  ACCT_0_ADDR,
-  ACCT_1_PRIVKEY,
-  ACCT_1_ADDR
+  ACCT_0,
+  ACCT_1,
+  CHANNEL_STATUS,
+  ZERO,
 } = require("./constants.js");
+
 
 module.exports = {
   sleep,
@@ -16,7 +22,11 @@ module.exports = {
   takeSnapshot,
   revertSnapshot,
   log,
-  toBN
+  toBN,
+  openChannel,
+  finalAsserts,
+  checkBalanceAfterGas,
+  provider
 };
 
 function log (...args) {console.log(...args)}
@@ -70,20 +80,144 @@ function filterLogs(logs) {
 async function createTokens(SimpleToken) {
   const SIMPLE_TOKEN_SUPPLY = await web3.utils.toWei('10000', "ether")
   const AMOUNT_TO_EACH = (await toBN(SIMPLE_TOKEN_SUPPLY)).div(await toBN(2))
-  const simpleToken = await SimpleToken.new({ from: ACCT_0_ADDR })
-  await simpleToken.transfer(ACCT_1_ADDR, AMOUNT_TO_EACH, {
-    from: ACCT_0_ADDR
+  const simpleToken = await SimpleToken.new({ from: ACCT_0.address })
+  await simpleToken.transfer(ACCT_1.address, AMOUNT_TO_EACH, {
+    from: ACCT_0.address
   })
 
-  assert((await simpleToken.balanceOf(ACCT_0_ADDR)).eq(AMOUNT_TO_EACH))
-  assert((await simpleToken.balanceOf(ACCT_1_ADDR)).eq(AMOUNT_TO_EACH))
+  assert((await simpleToken.balanceOf(ACCT_0.address)).eq(AMOUNT_TO_EACH))
+  assert((await simpleToken.balanceOf(ACCT_1.address)).eq(AMOUNT_TO_EACH))
 
-  return [simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH]
+  return {simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH}
 }
 
-async function testSig(boolVal) {
-  // fingerprint = keccak256(channelId, nonce, balanceA, balanceB)
-  let hash = await abi.utils.soliditySha3(boolVal).toString("hex");
-  console.log("this is hash ", hash);
-  return hash;
+const sign = (signer, message) => {
+  return joinSignature(signer.signDigest(message))
+
+}
+
+
+async function checkBalanceAfterGas(txn, oldBalance) {
+  let txnCost = toBN(
+    (await provider.getGasPrice())*txn.receipt.gasUsed
+  )
+  let { value, from } = await provider.getTransaction(txn.tx)
+
+  assert(
+    oldBalance.sub(toBN(value)).sub(txnCost)
+    .eq(toBN(await provider.getBalance(from)))
+  )
+}
+
+async function finalAsserts({
+  instance,
+  agentA,
+  agentB,
+  tokenAddr,
+  channelStatus,
+  challengePeriod = 0,
+  channelNonce = 0,
+  expectedCloseTime = 0,
+  expectedDeposit0 = toBN('0'),
+  expectedDeposit1 = toBN('0'),
+  expectedBalance0 = toBN('0'),
+  expectedBalance1 = toBN('0'),
+  expectedChallenger  = '0',
+  }
+) {
+
+  const activeId = await instance.activeIds.call(
+    ACCT_0.address,
+    ACCT_1.address,
+    tokenAddr
+  );
+
+  const [
+    acct_0_addr,
+    acct_1_addr,
+    tokenContract,
+    deposit0,
+    deposit1,
+    status,
+    challenge,
+    nonce,
+    closeTime,
+    balance0,
+    balance1,
+    challengeStartedBy
+  ] = Object.values(await instance.getChannel(activeId))
+
+  assert.equal(acct_0_addr, agentA); // address agent 0;
+  assert.equal(acct_1_addr, agentB); // address agent 1;
+  assert.equal(tokenContract, tokenAddr); // address tokenContract;
+  assert(deposit0.eq(expectedDeposit0)); // uint depositA;
+  assert(deposit1.eq(expectedDeposit1)); // uint depositB;
+  assert(balance0.eq(expectedBalance0)); // uint balance 0
+  assert(balance1.eq(expectedBalance1)); // uint balance 1
+  assert.equal(status.toNumber(), channelStatus); // ChannelStatus
+  assert.equal(challenge.toNumber(), challengePeriod); // uint challenge;
+  assert.equal(nonce.toNumber(), channelNonce); // uint nonce;
+  assert.equal(closeTime.toNumber(), expectedCloseTime); // uint closeTime;
+  assert.equal(ZERO, challengeStartedBy); // uint closeTime;
+}
+
+// contract functions
+async function openChannel({
+  instance,
+  to,
+  channelCreator, //msg.sender
+  tokenAddr, //simpleToken instance or null for ether
+  deposit,
+  challengePeriod
+}) {
+
+  let txn = await instance.openChannel(
+    to,
+    tokenAddr,
+    deposit,
+    challengePeriod,
+    { from: channelCreator, value: deposit }
+  )
+  return txn
+}
+
+async function updateState(
+  instance,
+  channelId,
+  sequenceNumber,
+  balance0,
+  balance1
+) {
+
+  let fingerprint = web3.utils.soliditySha3(
+    channelId,
+    sequenceNumber,
+    balance0,
+    balance1,
+  )
+
+  await instance.updateState(
+    channelId,
+    sequenceNumber,
+    balance0,
+    balance1,
+    sign(ACCT_0, fingerprint),
+    sign(ACCT_1, fingerprint),
+  )
+}
+
+async function closeChannel(
+  instance,
+  channelId,
+  hashlocks,
+  balance0 = 5,
+  balance1 = 7
+) {
+  await updateState(instance, channelId, 1, balance0, balance1, hashlocks);
+  await mineBlocks(5);
+  await instance.closeChannel(channelId);
+}
+
+async function challengeChannel(
+){
 }
