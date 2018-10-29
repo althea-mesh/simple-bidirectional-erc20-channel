@@ -156,6 +156,7 @@ contract ChannelManager {
     function isValidBoolSig(
         string sigA
     )
+    view
     public 
     {
         bytes32 fingerprint = keccak256(abi.encodePacked(true
