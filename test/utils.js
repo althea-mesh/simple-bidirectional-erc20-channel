@@ -27,7 +27,7 @@ module.exports = {
   channelStateAsserts,
   checkBalanceAfterGas,
   joinChannel,
-  updateState,
+  updateChannel,
   openJoin,
   provider,
   sign
@@ -212,30 +212,55 @@ async function joinChannel({
   await checkBalanceAfterGas(txn, oldBalance)
 }
 
-async function updateState({
+async function updateChannel({
   instance,
-  channelId,
-  sequenceNumber,
+  updateNonce,
   balance0,
-  balance1
+  balance1,
+  agentA = ACCT_0.address,
+  agentB = ACCT_1.address,
+  signer0 = null,
+  signer1 = null,
 }) {
 
+  const activeId = await instance.activeIds.call(
+    agentA,
+    agentB,
+    ZERO
+  )
+
   let fingerprint = web3.utils.soliditySha3(
-    channelId,
-    sequenceNumber,
+    activeId,
+    updateNonce,
     balance0,
     balance1,
   )
+
+  let signerA = agentA === ACCT_0.address ? ACCT_0 : signer0
+  let signerB = agentB === ACCT_1.address ? ACCT_1 : signer1
+  let sig0 = await sign(signerA, fingerprint)
+  let sig1 = await sign(signerB, fingerprint)
+
+  assert(await instance.isValidStateUpdate(
+    activeId,
+    updateNonce,
+    balance0,
+    balance1,
+    sig0,
+    sig1,
+    true,
+    true,
+    { from: ACCT_1.address }
+  ), "Channel update is not valid")
 
   await instance.updateState(
-    channelId,
-    sequenceNumber,
+    activeId,
+    updateNonce,
     balance0,
     balance1,
-    sign(ACCT_0, fingerprint),
-    sign(ACCT_1, fingerprint),
+    sig0,
+    sig1
   )
-
 }
 
 async function closeChannel({

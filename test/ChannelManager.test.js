@@ -17,6 +17,7 @@ const {
   provider,
   channelStateAsserts,
   joinChannel,
+  updateChannel,
   openJoin,
   sign,
 } = require("./utils.js")
@@ -28,9 +29,16 @@ contract("ChannelManager", () => {
     channelManager = await ChannelManager.deployed()
   })
 
+  let snapshot
+  beforeEach(async () => {
+    snapshot = await takeSnapshot()
+  })
+  afterEach(async () => {
+    await revertSnapshot(snapshot)
+  })
+
   context('newChannel', async () => {
     it("newChannel", async () => {
-      const snapshot = await takeSnapshot()
 
       const deposit = toBN(web3.utils.toWei('10', "ether"))
       const challengePeriod = 6000
@@ -55,7 +63,6 @@ contract("ChannelManager", () => {
         challengePeriod: challengePeriod 
       })
 
-      await revertSnapshot(snapshot)
     })
   })
 
@@ -94,16 +101,20 @@ contract("ChannelManager", () => {
         challengePeriod: challengePeriod 
       })
 
-      await revertSnapshot(snapshot)
     })
   })
 
   context('updateState', async () => {
     it("updateState", async () => {
-      const snapshot = await takeSnapshot()
 
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const newBalance0 = deposit0.sub(
+        await toBN(await web3.utils.toWei('1', "ether"))
+      )
+      const newBalance1 = deposit1.add(
+        await toBN(await web3.utils.toWei('1', "ether"))
+      )
       const challengePeriod= 6000
 
       await openJoin({
@@ -113,50 +124,14 @@ contract("ChannelManager", () => {
         deposit1: deposit1,
       })
 
-      const activeId = await channelManager.activeIds.call(
-        ACCT_0.address,
-        ACCT_1.address,
-        ZERO
-      )
-      
-      const newBalance0 = deposit0.sub(
-        await toBN(await web3.utils.toWei('1', "ether"))
-      )
-      const newBalance1 = deposit1.add(
-        await toBN(await web3.utils.toWei('1', "ether"))
-      )
-
       let updateNonce = 1 // update with higher nonce
-      let fingerprint = await web3.utils.soliditySha3(
-        activeId,
-        updateNonce,
-        newBalance0,
-        newBalance1,
-      )
 
-      let sig0 = await sign(ACCT_0, fingerprint)
-      let sig1 = await sign(ACCT_1, fingerprint)
-      assert(await channelManager.isValidStateUpdate(
-        activeId,
-        updateNonce,
-        newBalance0,
-        newBalance1,
-        sig0,
-        sig1,
-        true,
-        true,
-        { from: ACCT_1.address }
-      ))
-
-      await channelManager.updateState(
-        activeId,
-        updateNonce,
-        newBalance0,
-        newBalance1,
-        sig0,
-        sig1,
-        { from: ACCT_0.address }
-      )
+      await updateChannel({
+        instance: channelManager,
+        updateNonce: updateNonce,
+        balance0: newBalance0,
+        balance1: newBalance1,
+      })
 
       await channelStateAsserts({
         instance: channelManager,
@@ -171,13 +146,11 @@ contract("ChannelManager", () => {
         challengePeriod: challengePeriod 
       })
 
-      await revertSnapshot(snapshot)
     })
   })
 
   context('newChannel', async () => {
     it("eth opened but not joined", async () => {
-      const snapshot = await takeSnapshot()
 
       let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
       let deposit = toBN(web3.utils.toWei('1', "ether"))
@@ -203,7 +176,6 @@ contract("ChannelManager", () => {
         challengePeriod: challengePeriod 
       })
 
-      await revertSnapshot(snapshot)
     })
   })
 
