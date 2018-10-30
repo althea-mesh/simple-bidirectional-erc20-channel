@@ -37,8 +37,8 @@ contract("ChannelManager", () => {
     await revertSnapshot(snapshot)
   })
 
-  context('newChannel', async () => {
-    it("newChannel", async () => {
+  context('openChannel', async () => {
+    it("happy openChannel", async () => {
 
       const deposit = toBN(web3.utils.toWei('10', "ether"))
       const challengePeriod = 6000
@@ -67,7 +67,7 @@ contract("ChannelManager", () => {
   })
 
   context('joinChannel', async () => {
-    it("no new deposit", async () => {
+    it("happy joinChannel", async () => {
 
       const deposit0 = toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = toBN(web3.utils.toWei('3.1459', "ether"))
@@ -104,7 +104,7 @@ contract("ChannelManager", () => {
   })
 
   context('updateState', async () => {
-    it("updateState", async () => {
+    it("happy updateState", async () => {
 
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
@@ -147,40 +147,11 @@ contract("ChannelManager", () => {
     })
   })
 
-  context('newChannel', async () => {
-    it("eth opened but not joined", async () => {
-
-      let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
-      let deposit = toBN(web3.utils.toWei('1', "ether"))
-      const challengePeriod = 6000
-
-      let txn = await openChannel({
-        instance: channelManager,
-        channelCreator: ACCT_0.address,
-        to: ACCT_1.address,
-        deposit: deposit,
-        challengePeriod: challengePeriod,
-      })
-
-      await checkBalanceAfterGas(txn, oldBalance)
-
-      await channelStateAsserts({
-        instance: channelManager,
-        agentA: ACCT_0.address,
-        agentB: ACCT_1.address,
-        expectedDeposit0: deposit,
-        expectedBalance0: deposit,  
-        channelStatus: CHANNEL_STATUS.OPEN,
-        challengePeriod: challengePeriod 
-      })
-
-    })
+  context('challenge', async () => {
   })
 
   context('closeChannel', async () => {
   })
 
-  context('challenge', async () => {
-  })
 
 })
