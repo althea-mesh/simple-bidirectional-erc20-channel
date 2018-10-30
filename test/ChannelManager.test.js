@@ -68,7 +68,6 @@ contract("ChannelManager", () => {
 
   context('joinChannel', async () => {
     it("no new deposit", async () => {
-      const snapshot = await takeSnapshot()
 
       const deposit0 = toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = toBN(web3.utils.toWei('3.1459', "ether"))
@@ -125,7 +124,6 @@ contract("ChannelManager", () => {
       })
 
       let updateNonce = 1 // update with higher nonce
-
       await updateChannel({
         instance: channelManager,
         updateNonce: updateNonce,
