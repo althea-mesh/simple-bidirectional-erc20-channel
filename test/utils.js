@@ -9,7 +9,6 @@ let provider = new ethers.providers.Web3Provider(web3.currentProvider)
 const {
   ACCT_0,
   ACCT_1,
-  CHANNEL_STATUS,
   ZERO,
 } = require("./constants.js");
 
@@ -28,9 +27,11 @@ module.exports = {
   checkBalanceAfterGas,
   joinChannel,
   updateChannel,
+  challengeChannel,
+  closeChannel,
   openJoin,
   provider,
-  sign
+  sign,
 };
 
 function log (...args) {console.log(...args)}
@@ -122,7 +123,7 @@ async function channelStateAsserts({
   tokenAddr = ZERO,
   challengePeriod = 0,
   channelNonce = 0,
-  expectedCloseTime = 0,
+  expectedCloseTime = toBN('0'),
   expectedDeposit0 = toBN('0'),
   expectedDeposit1 = toBN('0'),
   expectedBalance0 = toBN('0'),
@@ -165,7 +166,7 @@ async function channelStateAsserts({
     "Challenge period not equal"
   )
   assert.equal(nonce.toNumber(), channelNonce, "Nonce not equal")
-  assert.equal(closeTime.toNumber(), expectedCloseTime, "Close time not equal")
+  assert(closeTime.eq(expectedCloseTime), "Close time not equal")
   assert.equal(expectedChallenger, challengeStartedBy, "Challenger not equal")
 }
 
@@ -263,19 +264,36 @@ async function updateChannel({
   )
 }
 
-async function closeChannel({
+async function challengeChannel({
   instance,
-  channelId,
-  hashlocks,
-  balance0 = 5,
-  balance1 = 7
+  agentA = ACCT_0.address,
+  agentB = ACCT_1.address,
+  challenger = null,
+  tokenAddr = ZERO,
 }) {
-  instance.closeChannel({
-  })
+  if (!challenger) { challenger = agentA }
+  const activeId = await instance.activeIds.call(
+    agentA,
+    agentB,
+    tokenAddr
+  )
+  // we return this one because it contains the logs
+  // with some useful information
+  return instance.startChallenge(activeId, {from: challenger })
 }
 
-async function challengeChannel( {}
-){
+async function closeChannel({
+  instance,
+  agentA = ACCT_0.address,
+  agentB = ACCT_1.address,
+  tokenAddr = ZERO,
+}) {
+  const activeId = await instance.activeIds.call(
+    agentA,
+    agentB,
+    tokenAddr
+  )
+  await instance.closeChannel(activeId)
 }
 
 async function openJoin({

@@ -19,7 +19,7 @@ const {
   joinChannel,
   updateChannel,
   openJoin,
-  sign,
+  challengeChannel,
 } = require("./utils.js")
 
 contract("ChannelManager", () => {
@@ -148,10 +148,35 @@ contract("ChannelManager", () => {
   })
 
   context('challenge', async () => {
+    it('happy startChallenge', async () => {
+      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const challengePeriod= 6000
+
+      await openJoin({
+        instance: channelManager,
+        challengePeriod: challengePeriod,
+        deposit0: deposit0,
+        deposit1: deposit1,
+      })
+
+      let { logs } = await challengeChannel({instance: channelManager,})
+      await channelStateAsserts({
+        instance: channelManager,
+        expectedDeposit0: deposit0,
+        expectedBalance0: deposit0,
+        expectedDeposit1: deposit1,
+        expectedBalance1: deposit1,
+        channelStatus: CHANNEL_STATUS.CHALLENGE,
+        challengePeriod: challengePeriod,
+        expectedChallenger: ACCT_0.address,
+        expectedCloseTime: logs[0].args.closeTime
+      })
+    })
   })
 
   context('closeChannel', async () => {
+    it('happy closeChannel', async () => {
+    })
   })
-
-
 })
