@@ -24,8 +24,11 @@ module.exports = {
   log,
   toBN,
   openChannel,
-  finalAsserts,
+  channelStateAsserts,
   checkBalanceAfterGas,
+  joinChannel,
+  updateState,
+  openJoin,
   provider,
   sign
 };
@@ -106,16 +109,17 @@ async function checkBalanceAfterGas(txn, oldBalance) {
 
   assert(
     oldBalance.sub(toBN(value)).sub(txnCost)
-    .eq(toBN(await provider.getBalance(from)))
+    .eq(toBN(await provider.getBalance(from))),
+    "Ether balance after gas does not math"
   )
 }
 
-async function finalAsserts({
+async function channelStateAsserts({
   instance,
-  agentA,
-  agentB,
-  tokenAddr = ZERO,
+  agentA = ACCT_0.address,
+  agentB = ACCT_1.address,
   channelStatus,
+  tokenAddr = ZERO,
   challengePeriod = 0,
   channelNonce = 0,
   expectedCloseTime = 0,
@@ -124,8 +128,7 @@ async function finalAsserts({
   expectedBalance0 = toBN('0'),
   expectedBalance1 = toBN('0'),
   expectedChallenger  = ZERO,
-  }
-) {
+}) {
 
   const activeId = await instance.activeIds.call(
     ACCT_0.address,
@@ -186,13 +189,36 @@ async function openChannel({
   return txn
 }
 
-async function updateState(
+
+async function joinChannel({
+  instance,
+  agentA,
+  agentB,
+  deposit,
+  tokenAddr = ZERO
+}) {
+
+  const activeId = await instance.activeIds.call(
+    agentA,
+    agentB,
+    tokenAddr
+  );
+  
+  let oldBalance = toBN(await provider.getBalance(agentB))
+  let txn = await instance.joinChannel(activeId, ZERO, {
+    from: agentB,
+    value: deposit,
+  });
+  await checkBalanceAfterGas(txn, oldBalance)
+}
+
+async function updateState({
   instance,
   channelId,
   sequenceNumber,
   balance0,
   balance1
-) {
+}) {
 
   let fingerprint = web3.utils.soliditySha3(
     channelId,
@@ -209,20 +235,46 @@ async function updateState(
     sign(ACCT_0, fingerprint),
     sign(ACCT_1, fingerprint),
   )
+
 }
 
-async function closeChannel(
+async function closeChannel({
   instance,
   channelId,
   hashlocks,
   balance0 = 5,
   balance1 = 7
-) {
-  await updateState(instance, channelId, 1, balance0, balance1, hashlocks);
-  await mineBlocks(5);
-  await instance.closeChannel(channelId);
+}) {
+  instance.closeChannel({
+  })
 }
 
-async function challengeChannel(
+async function challengeChannel( {}
 ){
+}
+
+async function openJoin({
+  instance,
+  agentA = ACCT_0.address,
+  agentB = ACCT_1.address,
+  challengePeriod = 0,
+  deposit0 = toBN('0'),
+  deposit1 = toBN('0'),
+}) {
+
+  let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
+  let txn = await openChannel({
+    instance: instance,
+    channelCreator: agentA,
+    to: agentB,
+    deposit: deposit0,
+    challengePeriod: challengePeriod,
+  })
+  await checkBalanceAfterGas(txn, oldBalance)
+  await joinChannel({
+    instance: instance,
+    agentA: ACCT_0.address,
+    agentB: ACCT_1.address,
+    deposit: deposit1,
+  })
 }
