@@ -30,6 +30,7 @@ module.exports = {
   challengeChannel,
   closeChannel,
   openJoin,
+  openJoinChallenge,
   provider,
   sign,
 };
@@ -117,9 +118,9 @@ async function checkBalanceAfterGas(txn, oldBalance) {
 
 async function channelStateAsserts({
   instance,
-  agentA = ACCT_0.address,
-  agentB = ACCT_1.address,
   channelStatus,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   tokenAddr = ZERO,
   challengePeriod = 0,
   channelNonce = 0,
@@ -132,8 +133,8 @@ async function channelStateAsserts({
 }) {
 
   const activeId = await instance.activeIds.call(
-    ACCT_0.address,
-    ACCT_1.address,
+    channelCreator,
+    counterParty,
     tokenAddr
   );
 
@@ -152,8 +153,8 @@ async function channelStateAsserts({
     challengeStartedBy
   ] = Object.values(await instance.getChannel(activeId))
 
-  assert.equal(acct_0_addr, agentA, "AgentA not equal")
-  assert.equal(acct_1_addr, agentB, "AgentB not equal")
+  assert.equal(acct_0_addr, channelCreator, "AgentA not equal")
+  assert.equal(acct_1_addr, counterParty, "AgentB not equal")
   assert.equal(tokenContract, tokenAddr, "Token address not equal")
   assert(deposit0.eq(expectedDeposit0), "Expected deposit0 not equal")
   assert(deposit1.eq(expectedDeposit1), "Expected deposit1 not equal" )
@@ -173,15 +174,15 @@ async function channelStateAsserts({
 // contract functions
 async function openChannel({
   instance,
-  to,
-  channelCreator, //msg.sender
-  tokenAddr, //simpleToken instance or null for ether
   deposit,
-  challengePeriod
+  challengePeriod,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
+  tokenAddr = ZERO,
 }) {
 
   let txn = await instance.openChannel(
-    to,
+    counterParty,
     tokenAddr,
     deposit,
     challengePeriod,
@@ -193,21 +194,21 @@ async function openChannel({
 
 async function joinChannel({
   instance,
-  agentA,
-  agentB,
   deposit,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   tokenAddr = ZERO
 }) {
 
   const activeId = await instance.activeIds.call(
-    agentA,
-    agentB,
+    channelCreator,
+    counterParty,
     tokenAddr
   );
   
-  let oldBalance = toBN(await provider.getBalance(agentB))
+  let oldBalance = toBN(await provider.getBalance(counterParty))
   let txn = await instance.joinChannel(activeId, ZERO, {
-    from: agentB,
+    from: counterParty,
     value: deposit,
   });
   await checkBalanceAfterGas(txn, oldBalance)
@@ -218,15 +219,15 @@ async function updateChannel({
   updateNonce,
   balance0,
   balance1,
-  agentA = ACCT_0.address,
-  agentB = ACCT_1.address,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   signer0 = null,
   signer1 = null,
 }) {
 
   const activeId = await instance.activeIds.call(
-    agentA,
-    agentB,
+    channelCreator,
+    counterParty,
     ZERO
   )
 
@@ -237,8 +238,8 @@ async function updateChannel({
     balance1,
   )
 
-  let signerA = agentA === ACCT_0.address ? ACCT_0 : signer0
-  let signerB = agentB === ACCT_1.address ? ACCT_1 : signer1
+  let signerA = channelCreator === ACCT_0.address ? ACCT_0 : signer0
+  let signerB = counterParty === ACCT_1.address ? ACCT_1 : signer1
   let sig0 = await sign(signerA, fingerprint)
   let sig1 = await sign(signerB, fingerprint)
 
@@ -266,15 +267,15 @@ async function updateChannel({
 
 async function challengeChannel({
   instance,
-  agentA = ACCT_0.address,
-  agentB = ACCT_1.address,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   challenger = null,
   tokenAddr = ZERO,
 }) {
-  if (!challenger) { challenger = agentA }
+  if (!challenger) { challenger = channelCreator}
   const activeId = await instance.activeIds.call(
-    agentA,
-    agentB,
+    channelCreator,
+    counterParty,
     tokenAddr
   )
   // we return this one because it contains the logs
@@ -284,13 +285,13 @@ async function challengeChannel({
 
 async function closeChannel({
   instance,
-  agentA = ACCT_0.address,
-  agentB = ACCT_1.address,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   tokenAddr = ZERO,
 }) {
   const activeId = await instance.activeIds.call(
-    agentA,
-    agentB,
+    channelCreator,
+    counterParty,
     tokenAddr
   )
   await instance.closeChannel(activeId)
@@ -298,8 +299,8 @@ async function closeChannel({
 
 async function openJoin({
   instance,
-  agentA = ACCT_0.address,
-  agentB = ACCT_1.address,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
   challengePeriod = 0,
   deposit0 = toBN('0'),
   deposit1 = toBN('0'),
@@ -307,17 +308,40 @@ async function openJoin({
 
   let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
   let txn = await openChannel({
-    instance: instance,
-    channelCreator: agentA,
-    to: agentB,
+    instance,
+    channelCreator,
+    counterParty,
     deposit: deposit0,
-    challengePeriod: challengePeriod,
+    challengePeriod,
   })
   await checkBalanceAfterGas(txn, oldBalance)
   await joinChannel({
-    instance: instance,
-    agentA: ACCT_0.address,
-    agentB: ACCT_1.address,
+    instance,
+    channelCreator,
+    challengePeriod,
     deposit: deposit1,
   })
+}
+
+async function openJoinChallenge({
+  instance,
+  channelCreator = ACCT_0.address,
+  counterParty = ACCT_1.address,
+  challengePeriod = 0,
+  deposit0 = toBN('0'),
+  deposit1 = toBN('0'),
+}) {
+
+  await openJoin({
+    instance,
+    channelCreator,
+    counterParty,
+    deposit0,
+    deposit1,
+    challengePeriod,
+  })
+
+  // we return this one because it contains the logs
+  // with some useful information
+  return await challengeChannel({instance})
 }

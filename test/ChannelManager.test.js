@@ -19,6 +19,7 @@ const {
   joinChannel,
   updateChannel,
   openJoin,
+  openJoinChallenge,
   challengeChannel,
 } = require("./utils.js")
 
@@ -46,17 +47,13 @@ contract("ChannelManager", () => {
       let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
       let txn = await openChannel({
         instance: channelManager,
-        channelCreator: ACCT_0.address,
-        to: ACCT_1.address,
-        deposit: deposit,
-        challengePeriod: challengePeriod,
+        deposit,
+        challengePeriod,
       })
       await checkBalanceAfterGas(txn, oldBalance)
 
       await channelStateAsserts({
         instance: channelManager,
-        agentA: ACCT_0.address,
-        agentB: ACCT_1.address,
         expectedDeposit0: deposit,
         expectedBalance0: deposit,
         channelStatus: CHANNEL_STATUS.OPEN,
@@ -76,8 +73,6 @@ contract("ChannelManager", () => {
       let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
       let txn = await openChannel({
         instance: channelManager,
-        channelCreator: ACCT_0.address,
-        to: ACCT_1.address,
         deposit: deposit0,
         challengePeriod: challengePeriod,
       })
@@ -85,8 +80,6 @@ contract("ChannelManager", () => {
 
       await joinChannel({
         instance: channelManager,
-        agentA: ACCT_0.address,
-        agentB: ACCT_1.address,
         deposit: deposit1,
       })
 
@@ -133,8 +126,6 @@ contract("ChannelManager", () => {
 
       await channelStateAsserts({
         instance: channelManager,
-        agentA: ACCT_0.address,
-        agentB: ACCT_1.address,
         channelNonce: updateNonce,
         expectedDeposit0: deposit0,
         expectedBalance0: newBalance0,  
@@ -143,7 +134,6 @@ contract("ChannelManager", () => {
         channelStatus: CHANNEL_STATUS.JOINED,
         challengePeriod: challengePeriod 
       })
-
     })
   })
 
@@ -177,6 +167,26 @@ contract("ChannelManager", () => {
 
   context('closeChannel', async () => {
     it('happy closeChannel', async () => {
+      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const challengePeriod= 6000
+      let { logs } = await openJoinChallenge({
+        instance: channelManager,
+        challengePeriod: challengePeriod,
+        deposit0: deposit0,
+        deposit1: deposit1,
+      })
+      await channelStateAsserts({
+        instance: channelManager,
+        expectedDeposit0: deposit0,
+        expectedBalance0: deposit0,
+        expectedDeposit1: deposit1,
+        expectedBalance1: deposit1,
+        channelStatus: CHANNEL_STATUS.CHALLENGE,
+        challengePeriod: challengePeriod,
+        expectedChallenger: ACCT_0.address,
+        expectedCloseTime: logs[0].args.closeTime
+      })
     })
   })
 })
