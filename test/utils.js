@@ -2,9 +2,10 @@ const p = require("util").promisify;
 const toBN = web3.utils.toBN
 const ethers = require("ethers")
 const { joinSignature } = require("ethers").utils
-const SimpleToken = artifacts.require("./SimpleToken.sol")
 
-let provider = new ethers.providers.Web3Provider(web3.currentProvider)
+let provider = new ethers.providers.Web3Provider(
+  web3.currentProvider
+)
 
 const {
   ACCT_0,
@@ -40,6 +41,7 @@ function log (...args) {console.log(...args)}
 let snapshotInc = 0;
 
 async function takeSnapshot() {
+  //eslint-disable-next-line
   const {error, result} = await p(web3.currentProvider.send)({
     jsonrpc: "2.0",
     method: "evm_snapshot",
@@ -112,7 +114,7 @@ async function checkBalanceAfterGas(txn, oldBalance) {
   assert(
     oldBalance.sub(toBN(value)).sub(txnCost)
     .eq(toBN(await provider.getBalance(from))),
-    "Ether balance after gas does not math"
+    "Ether balance after gas does not match"
   )
 }
 
@@ -222,8 +224,8 @@ async function updateChannel({
   balance1,
   channelCreator = ACCT_0.address,
   counterParty = ACCT_1.address,
-  signer0 = null,
-  signer1 = null,
+  signer0 = ACCT_0,
+  signer1 = ACCT_1,
 }) {
 
   const activeId = await instance.activeIds.call(
@@ -239,10 +241,8 @@ async function updateChannel({
     balance1,
   )
 
-  let signerA = channelCreator === ACCT_0.address ? ACCT_0 : signer0
-  let signerB = counterParty === ACCT_1.address ? ACCT_1 : signer1
-  let sig0 = await sign(signerA, fingerprint)
-  let sig1 = await sign(signerB, fingerprint)
+  let sig0 = await sign(signer0, fingerprint)
+  let sig1 = await sign(signer1, fingerprint)
 
   assert(await instance.isValidStateUpdate(
     activeId,
@@ -272,7 +272,7 @@ async function challengeChannel({
   challenger = null,
   tokenAddr = ZERO,
 }) {
-  if (!challenger) { challenger = channelCreator}
+  if (!challenger) { challenger = channelCreator }
   const activeId = await instance.activeIds.call(
     channelCreator,
     counterParty,

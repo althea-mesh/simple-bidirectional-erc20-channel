@@ -25,9 +25,9 @@ const {
 
 contract("ChannelManager", () => {
 
-  let channelManager
+  let instance
   before(async () => {
-    channelManager = await ChannelManager.deployed()
+    instance = await ChannelManager.deployed()
   })
 
   let snapshot
@@ -45,19 +45,18 @@ contract("ChannelManager", () => {
       const challengePeriod = 6000
 
       await openChannel({
-        instance: channelManager,
+        instance,
         deposit,
         challengePeriod,
       })
 
       await channelStateAsserts({
-        instance: channelManager,
+        instance: instance,
         expectedDeposit0: deposit,
         expectedBalance0: deposit,
         channelStatus: CHANNEL_STATUS.OPEN,
         challengePeriod: challengePeriod 
       })
-
     })
   })
 
@@ -69,18 +68,18 @@ contract("ChannelManager", () => {
       const challengePeriod = 6000
 
       await openChannel({
-        instance: channelManager,
+        instance: instance,
         deposit: deposit0,
         challengePeriod: challengePeriod,
       })
 
       await joinChannel({
-        instance: channelManager,
+        instance: instance,
         deposit: deposit1,
       })
 
       await channelStateAsserts({
-        instance: channelManager,
+        instance: instance,
         expectedDeposit0: deposit0,
         expectedDeposit1: deposit1,
         expectedBalance0: deposit0,
@@ -106,7 +105,7 @@ contract("ChannelManager", () => {
       const challengePeriod= 6000
 
       await openJoin({
-        instance: channelManager,
+        instance: instance,
         challengePeriod: challengePeriod,
         deposit0: deposit0,
         deposit1: deposit1,
@@ -114,14 +113,14 @@ contract("ChannelManager", () => {
 
       let updateNonce = 1 // update with higher nonce
       await updateChannel({
-        instance: channelManager,
+        instance: instance,
         updateNonce: updateNonce,
         balance0: newBalance0,
         balance1: newBalance1,
       })
 
       await channelStateAsserts({
-        instance: channelManager,
+        instance: instance,
         channelNonce: updateNonce,
         expectedDeposit0: deposit0,
         expectedBalance0: newBalance0,  
@@ -140,15 +139,18 @@ contract("ChannelManager", () => {
       const challengePeriod= 6000
 
       await openJoin({
-        instance: channelManager,
+        instance: instance,
         challengePeriod: challengePeriod,
         deposit0: deposit0,
         deposit1: deposit1,
       })
 
-      let { logs } = await challengeChannel({instance: channelManager,})
+      let { logs } = await challengeChannel({
+        instance: instance,
+      })
+
       await channelStateAsserts({
-        instance: channelManager,
+        instance: instance,
         expectedDeposit0: deposit0,
         expectedBalance0: deposit0,
         expectedDeposit1: deposit1,
@@ -167,13 +169,13 @@ contract("ChannelManager", () => {
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
       const challengePeriod= 6000
       let { logs } = await openJoinChallenge({
-        instance: channelManager,
+        instance: instance,
         challengePeriod: challengePeriod,
         deposit0: deposit0,
         deposit1: deposit1,
       })
       await channelStateAsserts({
-        instance: channelManager,
+        instance: instance,
         expectedDeposit0: deposit0,
         expectedBalance0: deposit0,
         expectedDeposit1: deposit1,
