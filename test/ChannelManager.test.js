@@ -44,13 +44,11 @@ contract("ChannelManager", () => {
       const deposit = toBN(web3.utils.toWei('10', "ether"))
       const challengePeriod = 6000
 
-      let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
-      let txn = await openChannel({
+      await openChannel({
         instance: channelManager,
         deposit,
         challengePeriod,
       })
-      await checkBalanceAfterGas(txn, oldBalance)
 
       await channelStateAsserts({
         instance: channelManager,
@@ -70,13 +68,11 @@ contract("ChannelManager", () => {
       const deposit1 = toBN(web3.utils.toWei('3.1459', "ether"))
       const challengePeriod = 6000
 
-      let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
-      let txn = await openChannel({
+      await openChannel({
         instance: channelManager,
         deposit: deposit0,
         challengePeriod: challengePeriod,
       })
-      await checkBalanceAfterGas(txn, oldBalance)
 
       await joinChannel({
         instance: channelManager,

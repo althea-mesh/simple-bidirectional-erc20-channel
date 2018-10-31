@@ -181,6 +181,7 @@ async function openChannel({
   tokenAddr = ZERO,
 }) {
 
+  let oldBalance = toBN(await provider.getBalance(channelCreator))
   let txn = await instance.openChannel(
     counterParty,
     tokenAddr,
@@ -188,7 +189,7 @@ async function openChannel({
     challengePeriod,
     { from: channelCreator, value: deposit }
   )
-  return txn
+  await checkBalanceAfterGas(txn, oldBalance)
 }
 
 
@@ -252,7 +253,6 @@ async function updateChannel({
     sig1,
     true,
     true,
-    { from: ACCT_1.address }
   ), "Channel update is not valid")
 
   await instance.updateState(
@@ -261,7 +261,7 @@ async function updateChannel({
     balance0,
     balance1,
     sig0,
-    sig1
+    sig1,
   )
 }
 
@@ -306,15 +306,13 @@ async function openJoin({
   deposit1 = toBN('0'),
 }) {
 
-  let oldBalance = toBN(await provider.getBalance(ACCT_0.address))
-  let txn = await openChannel({
+  await openChannel({
     instance,
     channelCreator,
     counterParty,
     deposit: deposit0,
     challengePeriod,
   })
-  await checkBalanceAfterGas(txn, oldBalance)
   await joinChannel({
     instance,
     channelCreator,
