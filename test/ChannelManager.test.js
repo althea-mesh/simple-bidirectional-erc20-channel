@@ -139,10 +139,10 @@ contract("ChannelManager", () => {
       const challengePeriod= 6000
 
       await openJoin({
-        instance: instance,
-        challengePeriod: challengePeriod,
-        deposit0: deposit0,
-        deposit1: deposit1,
+        instance,
+        challengePeriod,
+        deposit0,
+        deposit1,
       })
 
       let { logs } = await challengeChannel({
@@ -169,10 +169,10 @@ contract("ChannelManager", () => {
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
       const challengePeriod= 6000
       let { logs } = await openJoinChallenge({
-        instance: instance,
-        challengePeriod: challengePeriod,
-        deposit0: deposit0,
-        deposit1: deposit1,
+        instance,
+        challengePeriod,
+        deposit0,
+        deposit1,
       })
       await channelStateAsserts({
         instance: instance,
