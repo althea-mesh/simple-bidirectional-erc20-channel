@@ -1,374 +1,190 @@
-const ChannelManager = artifacts.require("./ChannelManager.sol");
-const SimpleToken = artifacts.require("./SimpleToken.sol");
-const ethers = require("ethers")
+const ChannelManager = artifacts.require("./ChannelManager.sol")
 
 const {
-  ACCT_0_PRIVKEY,
-  ACCT_0_ADDR,
-  ACCT_1_PRIVKEY,
-  ACCT_1_ADDR,
-  ACCT_2_PRIVKEY,
-  ACCT_2_ADDR,
-  CHANNEL_STATUS
-} = require("./constants.js");
+  ACCT_0,
+  ACCT_1,
+  CHANNEL_STATUS,
+  ZERO
+} = require("./constants.js")
 
 const {
-  createTokens,
   toBN,
   log,
-  filterLogs,
-  mineBlock,
-  mineBlocks,
-  sleep,
   takeSnapshot,
-  revertSnapshot
-} = require("./utils.js");
+  revertSnapshot,
+  openChannel,
+  checkBalanceAfterGas,
+  provider,
+  channelStateAsserts,
+  joinChannel,
+  updateChannel,
+  openJoin,
+  openJoinChallenge,
+  challengeChannel,
+} = require("./utils.js")
 
-contract("ChannelManager", async accounts => {
+contract("ChannelManager", () => {
 
-  let channelManager
+  let instance
   before(async () => {
-    channelManager = await ChannelManager.deployed()
+    instance = await ChannelManager.deployed()
   })
 
-  it("newChannel, token opened", async () => {
-    const snapshot = await takeSnapshot()
+  let snapshot
+  beforeEach(async () => {
+    snapshot = await takeSnapshot()
+  })
+  afterEach(async () => {
+    await revertSnapshot(snapshot)
+  })
 
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken)
+  context('openChannel', async () => {
+    it("happy openChannel", async () => {
 
-    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"))
-    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
-    const CHALLENGE_PERIOD = 6000;
+      const deposit = toBN(web3.utils.toWei('10', "ether"))
+      const challengePeriod = 6000
 
-    await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
-      from: ACCT_0_ADDR
-    });
+      await openChannel({
+        instance,
+        deposit,
+        challengePeriod,
+      })
 
-    await channelManager.openChannel(
-      ACCT_1_ADDR,
-      simpleToken.address,
-      ACCT_0_DEPOSIT,
-      CHALLENGE_PERIOD,
-      {
-        from: ACCT_0_ADDR
-      }
-    );
-
-    const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert(balance0_query.eq(ACCT_0_CORRECT_BALANCE));
-
-
-    const activeId = await channelManager.activeIds.call(
-      ACCT_0_ADDR,
-      ACCT_1_ADDR,
-      simpleToken.address
-    );
-
-    const [
-      acct_0_addr,
-      acct_1_addr,
-      tokenContract,
-      deposit0,
-      deposit1,
-      status,
-      challenge,
-      nonce,
-      closeTime,
-      balance0,
-      balance1,
-      challengeStartedBy
-    ] = Object.values(await channelManager.getChannel(activeId))
-
-    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0;
-    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1;
-    assert.equal(tokenContract, simpleToken.address); // address tokenContract;
-    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA;
-    assert.equal(deposit1.toNumber(), 0); // uint depositB;
-    assert.equal(status.toNumber(), CHANNEL_STATUS.OPEN); // ChannelStatus status;
-    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce.toNumber(), 0); // uint nonce;
-    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
-    assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
-    assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
-    assert.equal(challengeStartedBy, 0);
-
-    await revertSnapshot(snapshot);
-  });
-
-  it("newChannel, token joined", async () => {
-    const snapshot = await takeSnapshot()
-
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken);
-    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('10', "ether"))
-    const ACCT_1_DEPOSIT = toBN(web3.utils.toWei('3.1459', "ether"))
-    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
-    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_1_DEPOSIT)
-
-    const CHALLENGE_PERIOD = 6000;
-
-    await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
-      from: ACCT_0_ADDR
-    });
-
-    await channelManager.openChannel(
-      ACCT_1_ADDR,
-      simpleToken.address,
-      ACCT_0_DEPOSIT,
-      CHALLENGE_PERIOD,
-      {
-        from: ACCT_0_ADDR
-      }
-    );
-
-    const balance0_query = await simpleToken.balanceOf(ACCT_0_ADDR);
-    assert(balance0_query.eq(ACCT_0_CORRECT_BALANCE))
-
-    const activeId = await channelManager.activeIds.call(
-      ACCT_0_ADDR,
-      ACCT_1_ADDR,
-      simpleToken.address
-    );
-
-    await simpleToken.approve(channelManager.address, ACCT_1_DEPOSIT, {
-      from: ACCT_1_ADDR
-    });
-    await channelManager.joinChannel(activeId, ACCT_1_DEPOSIT, {
-      from: ACCT_1_ADDR
-    });
-
-    const balance1_query = await simpleToken.balanceOf(ACCT_1_ADDR);
-    assert(balance1_query.eq(ACCT_1_CORRECT_BALANCE))
-
-    const [
-      acct_0_addr,
-      acct_1_addr,
-      tokenContract,
-      deposit0,
-      deposit1,
-      status,
-      challenge,
-      nonce,
-      closeTime,
-      balance0,
-      balance1,
-      challengeStartedBy
-    ] = Object.values(await channelManager.getChannel(activeId))
-
-    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0;
-    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1;
-    assert.equal(tokenContract, simpleToken.address); // address tokenContract;
-    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA;
-    assert(deposit1.eq(ACCT_1_DEPOSIT)); // uint depositB;
-    assert.equal(status.toNumber(), CHANNEL_STATUS.JOINED); // ChannelStatus status;
-    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce.toNumber(), 0); // uint nonce;
-    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
-    assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
-    assert(balance1.eq(ACCT_1_DEPOSIT)); // uint balance 1; // for state update
-    assert.equal(challengeStartedBy, 0);
-
-    await revertSnapshot(snapshot);
-  });
-
-  it("newChannel, token updated", async () => {
-    const snapshot = await takeSnapshot()
-
-    const [
-      simpleToken,
-      SIMPLE_TOKEN_SUPPLY,
-      AMOUNT_TO_EACH
-    ] = await createTokens(SimpleToken)
-
-    const ACCT_0_DEPOSIT = await toBN(web3.utils.toWei('10', "ether"))
-    const ACCT_1_DEPOSIT = await toBN(web3.utils.toWei('3', "ether"))
-    const ACCT_0_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_0_DEPOSIT)
-    const ACCT_1_CORRECT_BALANCE = AMOUNT_TO_EACH.sub(ACCT_1_DEPOSIT)
-    const ACCT_0_UPDATE_BALANCE = ACCT_0_DEPOSIT.sub(
-      await toBN(await web3.utils.toWei('1', "ether"))
-    )
-    const ACCT_1_UPDATE_BALANCE = ACCT_1_DEPOSIT.add(
-      await toBN(await web3.utils.toWei('1', "ether"))
-    )
-    const CHALLENGE_PERIOD = 6000
-
-    await simpleToken.approve(channelManager.address, ACCT_0_DEPOSIT, {
-      from: ACCT_0_ADDR
+      await channelStateAsserts({
+        instance: instance,
+        expectedDeposit0: deposit,
+        expectedBalance0: deposit,
+        channelStatus: CHANNEL_STATUS.OPEN,
+        challengePeriod: challengePeriod 
+      })
     })
+  })
 
-    await channelManager.openChannel(
-      ACCT_1_ADDR,
-      simpleToken.address,
-      ACCT_0_DEPOSIT,
-      CHALLENGE_PERIOD,
-      { from: ACCT_0_ADDR }
-    )
+  context('joinChannel', async () => {
+    it("happy joinChannel", async () => {
 
-    assert(
-      (await simpleToken.balanceOf(ACCT_0_ADDR)).eq(ACCT_0_CORRECT_BALANCE)
-    )
+      const deposit0 = toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = toBN(web3.utils.toWei('3.1459', "ether"))
+      const challengePeriod = 6000
 
-    const activeId = await channelManager.activeIds.call(
-      ACCT_0_ADDR,
-      ACCT_1_ADDR,
-      simpleToken.address
-    )
+      await openChannel({
+        instance: instance,
+        deposit: deposit0,
+        challengePeriod: challengePeriod,
+      })
 
-    await simpleToken.approve(channelManager.address, ACCT_1_DEPOSIT, {
-      from: ACCT_1_ADDR
+      await joinChannel({
+        instance: instance,
+        deposit: deposit1,
+      })
+
+      await channelStateAsserts({
+        instance: instance,
+        expectedDeposit0: deposit0,
+        expectedDeposit1: deposit1,
+        expectedBalance0: deposit0,
+        expectedBalance1: deposit1,
+        channelStatus: CHANNEL_STATUS.JOINED,
+        challengePeriod: challengePeriod 
+      })
+
     })
-    await channelManager.joinChannel(activeId, ACCT_1_DEPOSIT, {
-      from: ACCT_1_ADDR
+  })
+
+  context('updateState', async () => {
+    it("happy updateState", async () => {
+
+      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const newBalance0 = deposit0.sub(
+        await toBN(await web3.utils.toWei('1', "ether"))
+      )
+      const newBalance1 = deposit1.add(
+        await toBN(await web3.utils.toWei('1', "ether"))
+      )
+      const challengePeriod= 6000
+
+      await openJoin({
+        instance: instance,
+        challengePeriod: challengePeriod,
+        deposit0: deposit0,
+        deposit1: deposit1,
+      })
+
+      let updateNonce = 1 // update with higher nonce
+      await updateChannel({
+        instance: instance,
+        updateNonce: updateNonce,
+        balance0: newBalance0,
+        balance1: newBalance1,
+      })
+
+      await channelStateAsserts({
+        instance: instance,
+        channelNonce: updateNonce,
+        expectedDeposit0: deposit0,
+        expectedBalance0: newBalance0,  
+        expectedDeposit1: deposit1,
+        expectedBalance1: newBalance1,  
+        channelStatus: CHANNEL_STATUS.JOINED,
+        challengePeriod: challengePeriod 
+      })
     })
-    
-    assert(
-      (await simpleToken.balanceOf(ACCT_1_ADDR)).eq(ACCT_1_CORRECT_BALANCE)
-    )
+  })
 
-    let updateNonce = 1
-    let fingerprint = web3.utils.soliditySha3(
-      activeId,
-      updateNonce,
-      ACCT_0_UPDATE_BALANCE,
-      ACCT_1_UPDATE_BALANCE,
-    )
+  context('challenge', async () => {
+    it('happy startChallenge', async () => {
+      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const challengePeriod= 6000
 
-    let signer0 = new ethers.utils.SigningKey(ACCT_0_PRIVKEY)
-    let signer1 = new ethers.utils.SigningKey(ACCT_1_PRIVKEY)
-    let sig0 = ethers.utils.joinSignature(signer0.signDigest(fingerprint))
-    let sig1 = ethers.utils.joinSignature(signer1.signDigest(fingerprint))
+      await openJoin({
+        instance,
+        challengePeriod,
+        deposit0,
+        deposit1,
+      })
 
-    const is_valid = await channelManager.isValidStateUpdate(
-      activeId,
-      updateNonce, // update with higher nonce
-      ACCT_0_UPDATE_BALANCE,
-      ACCT_1_UPDATE_BALANCE,
-      sig0,
-      sig1,
-      true,
-      true,
-      { from: ACCT_0_ADDR }
-    )
-    assert(is_valid)
+      let { logs } = await challengeChannel({
+        instance: instance,
+      })
 
-    await channelManager.updateState(
-      activeId,
-      updateNonce, // update with higher nonce
-      ACCT_0_UPDATE_BALANCE.toString(),
-      ACCT_1_UPDATE_BALANCE.toString(),
-      sig0,
-      sig1,
-      { from: ACCT_0_ADDR }
-    );
+      await channelStateAsserts({
+        instance: instance,
+        expectedDeposit0: deposit0,
+        expectedBalance0: deposit0,
+        expectedDeposit1: deposit1,
+        expectedBalance1: deposit1,
+        channelStatus: CHANNEL_STATUS.CHALLENGE,
+        challengePeriod: challengePeriod,
+        expectedChallenger: ACCT_0.address,
+        expectedCloseTime: logs[0].args.closeTime
+      })
+    })
+  })
 
-    console.log(
-      "testing if state update is valid",
-      ACCT_0_UPDATE_BALANCE.toString(),
-      " ",
-      ACCT_1_UPDATE_BALANCE.toString()
-    );
-
-    const [
-      acct_0_addr,
-      acct_1_addr,
-      tokenContract,
-      deposit0,
-      deposit1,
-      status,
-      challenge,
-      nonce,
-      closeTime,
-      balance0,
-      balance1,
-      challengeStartedBy
-    ] = Object.values(await channelManager.getChannel(activeId));
-
-    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0
-    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1
-    assert.equal(tokenContract, simpleToken.address); // address tokenContract
-    // Using .eq here because both values are BN.js.
-    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA
-    assert(deposit1.eq(ACCT_1_DEPOSIT)); // uint depositB
-
-    assert.equal(status.toNumber(), CHANNEL_STATUS.JOINED); // ChannelStatus status
-
-    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge
-    assert.equal(nonce.toNumber(), updateNonce); // uint nonce;
-    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
-    assert(balance0.eq(ACCT_0_UPDATE_BALANCE)); // uint balance 0
-    assert(balance1.eq(ACCT_1_UPDATE_BALANCE)); // uint balance 1
-    assert.equal(challengeStartedBy, 0);
-
-    await revertSnapshot(snapshot);
-  });
-
-  it("newChannel, eth opened but not joined", async () => {
-    const snapshot = await takeSnapshot()
-
-    // for some reason we have an initial balance, so lets just use that
-    const ACCT_0_BALANCE = toBN(await web3.eth.getBalance(ACCT_0_ADDR));
-    const ACCT_1_BALANCE = toBN(await web3.eth.getBalance(ACCT_1_ADDR));
-    const ACCT_0_DEPOSIT = toBN(web3.utils.toWei('5', "ether"));
-    const ACCT_0_CORRECT_BALANCE = ACCT_0_BALANCE.sub(ACCT_0_DEPOSIT);
-    const CHALLENGE_PERIOD = 6000;
-
-    let txn = await channelManager.openChannel(
-      ACCT_1_ADDR,
-      0,
-      ACCT_0_DEPOSIT,
-      CHALLENGE_PERIOD,
-      {
-        from: ACCT_0_ADDR,
-        value: ACCT_0_DEPOSIT
-      }
-    );
-
-    let txnCost = toBN((await web3.eth.getGasPrice())*txn.receipt.gasUsed)
-    const new_address_balance_0 = toBN(await web3.eth.getBalance(ACCT_0_ADDR));
-    assert(new_address_balance_0.eq(ACCT_0_CORRECT_BALANCE.sub(txnCost)));
-
-    const activeId = await channelManager.activeIds.call(
-      ACCT_0_ADDR,
-      ACCT_1_ADDR,
-      0
-    );
-
-    const [
-      acct_0_addr,
-      acct_1_addr,
-      tokenContract,
-      deposit0,
-      deposit1,
-      status,
-      challenge,
-      nonce,
-      closeTime,
-      balance0,
-      balance1,
-      challengeStartedBy
-    ] = Object.values(await channelManager.getChannel(activeId));
-
-
-    assert.equal(acct_0_addr, ACCT_0_ADDR); // address agent 0;
-    assert.equal(acct_1_addr, ACCT_1_ADDR); // address agent 1;
-    assert.equal(tokenContract, 0); // address tokenContract;
-    assert(deposit0.eq(ACCT_0_DEPOSIT)); // uint depositA;
-    assert.equal(deposit1.toNumber(), 0); // uint depositB;
-    assert.equal(status.toNumber(), CHANNEL_STATUS.OPEN); // ChannelStatus status;
-    assert.equal(challenge.toNumber(), CHALLENGE_PERIOD); // uint challenge;
-    assert.equal(nonce.toNumber(), 0); // uint nonce;
-    assert.equal(closeTime.toNumber(), 0); // uint closeTime;
-    assert(balance0.eq(ACCT_0_DEPOSIT)); // uint balance 0; // for state update
-    assert.equal(balance1.toNumber(), 0); // uint balance 1; // for state update
-    assert.equal(challengeStartedBy, 0);
-
-    await revertSnapshot(snapshot);
-  });
-});
+  context('closeChannel', async () => {
+    it('happy closeChannel', async () => {
+      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
+      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
+      const challengePeriod= 6000
+      let { logs } = await openJoinChallenge({
+        instance,
+        challengePeriod,
+        deposit0,
+        deposit1,
+      })
+      await channelStateAsserts({
+        instance: instance,
+        expectedDeposit0: deposit0,
+        expectedBalance0: deposit0,
+        expectedDeposit1: deposit1,
+        expectedBalance1: deposit1,
+        channelStatus: CHANNEL_STATUS.CHALLENGE,
+        challengePeriod: challengePeriod,
+        expectedChallenger: ACCT_0.address,
+        expectedCloseTime: logs[0].args.closeTime
+      })
+    })
+  })
+})
