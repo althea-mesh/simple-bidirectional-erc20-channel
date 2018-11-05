@@ -191,6 +191,11 @@ async function openChannel({
     challengePeriod,
     { from: channelCreator, value: deposit }
   )
+  let txnCost = toBN(
+    (await provider.getGasPrice())*txn.receipt.gasUsed
+  )
+  log ('cost', txnCost.toString())
+  log ('used', txn.receipt.gasUsed.toString())
   await checkBalanceAfterGas(txn, oldBalance)
 }
 
@@ -272,7 +277,7 @@ async function challengeChannel({
   challenger = null,
   tokenAddr = ZERO,
 }) {
-  if (!challenger) { challenger = channelCreator }
+  if (!challenger) { challenger = channelCreator } // th
   const activeId = await instance.activeIds.call(
     channelCreator,
     counterParty,

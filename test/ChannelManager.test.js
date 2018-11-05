@@ -13,8 +13,6 @@ const {
   takeSnapshot,
   revertSnapshot,
   openChannel,
-  checkBalanceAfterGas,
-  provider,
   channelStateAsserts,
   joinChannel,
   updateChannel,
@@ -39,10 +37,31 @@ contract("ChannelManager", () => {
   })
 
   context('openChannel', async () => {
+    it("template", async () => {
+    })
     it("happy openChannel", async () => {
 
       const deposit = toBN(web3.utils.toWei('10', "ether"))
       const challengePeriod = 6000
+
+      await openChannel({
+        instance,
+        deposit,
+        challengePeriod,
+      })
+
+      await channelStateAsserts({
+        instance: instance,
+        expectedDeposit0: deposit,
+        expectedBalance0: deposit,
+        channelStatus: CHANNEL_STATUS.OPEN,
+        challengePeriod: challengePeriod 
+      })
+    })
+
+    it("challenge period must be none zero", async () => {
+      const deposit = toBN(web3.utils.toWei('10', "ether"))
+      const challengePeriod = 0
 
       await openChannel({
         instance,
@@ -87,7 +106,6 @@ contract("ChannelManager", () => {
         channelStatus: CHANNEL_STATUS.JOINED,
         challengePeriod: challengePeriod 
       })
-
     })
   })
 
@@ -164,7 +182,7 @@ contract("ChannelManager", () => {
   })
 
   context('closeChannel', async () => {
-    it('happy closeChannel', async () => {
+    it('happy closeChannel with no balance update', async () => {
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
       const challengePeriod= 6000
