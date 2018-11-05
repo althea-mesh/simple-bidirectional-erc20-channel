@@ -1,10 +1,9 @@
-const ChannelManager = artifacts.require("./ChannelManager.sol")
+const JehansExperiment = artifacts.require("./JehansExperiment.sol")
 
 const {
-  ACCT_0,
-  ACCT_1,
+  ACCT_A,
+  ACCT_B,
   CHANNEL_STATUS,
-  ZERO
 } = require("./constants.js")
 
 const {
@@ -12,12 +11,11 @@ const {
   log,
   takeSnapshot,
   revertSnapshot,
-  openChannel,
-  checkBalanceAfterGas,
+  depositContract,
   provider,
+  doubleDeposit,
   channelStateAsserts,
-  joinChannel,
-  updateChannel,
+  guacTransfer,
   openJoin,
   openJoinChallenge,
   challengeChannel,
@@ -27,7 +25,7 @@ contract("ChannelManager", () => {
 
   let instance
   before(async () => {
-    instance = await ChannelManager.deployed()
+    instance = await JehansExperiment.deployed()
   })
 
   let snapshot
@@ -38,61 +36,66 @@ contract("ChannelManager", () => {
     await revertSnapshot(snapshot)
   })
 
-  context('openChannel', async () => {
-    it("happy openChannel", async () => {
+  context.only('deposit', async () => {
+    it("happy deposit", async () => {
 
-      const deposit = toBN(web3.utils.toWei('10', "ether"))
-      const challengePeriod = 6000
+      const depositAmount = toBN(web3.utils.toWei('1', "ether"))
 
-      await openChannel({
+      await depositContract({
         instance,
-        deposit,
-        challengePeriod,
+        depositAmount,
       })
 
       await channelStateAsserts({
         instance: instance,
-        expectedDeposit0: deposit,
-        expectedBalance0: deposit,
-        channelStatus: CHANNEL_STATUS.OPEN,
-        challengePeriod: challengePeriod 
+        expectedBalanceA: depositAmount,
+        expectedTotalBalance: depositAmount
       })
     })
-  })
 
-  context('joinChannel', async () => {
-    it("happy joinChannel", async () => {
+    it.only("two accounts deposit", async () => {
 
-      const deposit0 = toBN(web3.utils.toWei('10', "ether"))
-      const deposit1 = toBN(web3.utils.toWei('3.1459', "ether"))
-      const challengePeriod = 6000
-
-      await openChannel({
-        instance: instance,
-        deposit: deposit0,
-        challengePeriod: challengePeriod,
-      })
-
-      await joinChannel({
-        instance: instance,
-        deposit: deposit1,
-      })
-
+      const depositA = toBN(web3.utils.toWei('1', "ether"))
+      const depositB = toBN(web3.utils.toWei('2', "ether"))
+      await doubleDeposit({instance, depositA, depositB})
       await channelStateAsserts({
         instance: instance,
-        expectedDeposit0: deposit0,
-        expectedDeposit1: deposit1,
-        expectedBalance0: deposit0,
-        expectedBalance1: deposit1,
-        channelStatus: CHANNEL_STATUS.JOINED,
-        challengePeriod: challengePeriod 
+        expectedBalanceA: depositA,
+        expectedBalanceB: depositB,
+        expectedTotalBalance: depositA.add(depositB)
       })
-
     })
   })
 
-  context('updateState', async () => {
+  context.only('updateState', async () => {
     it("happy updateState", async () => {
+
+      const depositA = toBN(web3.utils.toWei('10', "ether"))
+      const depositB = toBN(web3.utils.toWei('3.1459', "ether"))
+      await doubleDeposit({instance, depositA, depositB})
+
+      const newBalanceA = toBN(web3.utils.toWei('12', "ether"))
+      const newBalanceB = toBN(web3.utils.toWei('1.1459', "ether"))
+      const newNonce = 1
+      await guacTransfer({
+        instance,
+        updateNonce: newNonce,
+        balanceA: newBalanceA,
+        balanceB: newBalanceB,
+      })
+
+      await channelStateAsserts({
+        instance: instance,
+        channelNonce: newNonce,
+        expectedBalanceA: newBalanceA,
+        expectedBalanceB: newBalanceB,
+        expectedTotalBalance: depositA.add(depositB)
+      })
+    })
+  })
+
+  context('withdraw', async () => {
+    it("happy withdraw", async () => {
 
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
@@ -132,7 +135,7 @@ contract("ChannelManager", () => {
     })
   })
 
-  context('challenge', async () => {
+  context('startChallenge', async () => {
     it('happy startChallenge', async () => {
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
@@ -157,14 +160,14 @@ contract("ChannelManager", () => {
         expectedBalance1: deposit1,
         channelStatus: CHANNEL_STATUS.CHALLENGE,
         challengePeriod: challengePeriod,
-        expectedChallenger: ACCT_0.address,
+        expectedChallenger: ACCT_A.address,
         expectedCloseTime: logs[0].args.closeTime
       })
     })
   })
 
-  context('closeChannel', async () => {
-    it('happy closeChannel', async () => {
+  context('close', async () => {
+    it('happy close', async () => {
       const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
       const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
       const challengePeriod= 6000
@@ -182,7 +185,7 @@ contract("ChannelManager", () => {
         expectedBalance1: deposit1,
         channelStatus: CHANNEL_STATUS.CHALLENGE,
         challengePeriod: challengePeriod,
-        expectedChallenger: ACCT_0.address,
+        expectedChallenger: ACCT_A.address,
         expectedCloseTime: logs[0].args.closeTime
       })
     })

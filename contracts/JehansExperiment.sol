@@ -17,6 +17,8 @@ contract JehansExperiment {
         uint closeBlock;
     }
 
+    event Debug(uint balance);
+
     // Channels are stored by <high address> => <low address> => Channel
     mapping (address => mapping(address => Channel)) public channels;
 
@@ -30,8 +32,10 @@ contract JehansExperiment {
         require(agentA > agentB, "agentA's address must be numerically greater than agentB's address.");
         Channel storage channel = channels[agentA][agentB];
 
+        // is over/under flow a concern here?
         channel.balanceTotal += msg.value;
 
+        emit Debug(msg.value);
         if (msg.sender == agentA) {
             channel.balanceA += msg.value;
         } else if (msg.sender == agentB) {
@@ -42,7 +46,7 @@ contract JehansExperiment {
     }
 
     // CONCERN: Is this missing anything? Compare it against the other contract and old Guac to be sure.
-    function transfer (
+    function transfer(
         address agentA,
         address agentB,
         uint nonce,
@@ -135,6 +139,11 @@ contract JehansExperiment {
             revert("This is not your channel");
         }
 
+        require(
+          channel.balanceTotal == channel.balanceA + channel.balanceB, 
+          "Balance toal and current deposits don't add up"
+        );
+
         channel.nonce = nonce;
     }
 
@@ -160,6 +169,7 @@ contract JehansExperiment {
         address agentA,
         address agentB
     ) public {
+        // CONCERN: anyone can call this function
         require(agentA > agentB, "agentA's address must be numerically greater than agentB's address.");
         Channel storage channel = channels[agentA][agentB];
 

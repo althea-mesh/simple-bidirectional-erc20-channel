@@ -3,17 +3,17 @@ const {Wallet} = require('ethers')
 let MNEMONIC = "cook mango twist then skin sort option civil have still rather guilt"
 
 let path =  "m/44'/60'/0'/0/"
-let ACCT_0 = new Wallet.fromMnemonic(MNEMONIC, path + 7).signingKey
-let ACCT_1 = new Wallet.fromMnemonic(MNEMONIC, path + 8).signingKey
-let ACCT_2 = new Wallet.fromMnemonic(MNEMONIC, path + 9).signingKey
-ACCT_0.address = web3.utils.toChecksumAddress(ACCT_0.address)
-ACCT_1.address = web3.utils.toChecksumAddress(ACCT_1.address)
-ACCT_2.address = web3.utils.toChecksumAddress(ACCT_2.address)
+let ACCT_A = new Wallet.fromMnemonic(MNEMONIC, path + 8).signingKey
+let ACCT_B = new Wallet.fromMnemonic(MNEMONIC, path + 7).signingKey
+let ACCT_C = new Wallet.fromMnemonic(MNEMONIC, path + 9).signingKey
+ACCT_A.address = web3.utils.toChecksumAddress(ACCT_A.address)
+ACCT_B.address = web3.utils.toChecksumAddress(ACCT_B.address)
+ACCT_C.address = web3.utils.toChecksumAddress(ACCT_C.address)
 
 module.exports = {
-  ACCT_0,
-  ACCT_1,
-  ACCT_2,
+  ACCT_A,
+  ACCT_B,
+  ACCT_C,
   MNEMONIC,
   ZERO: '0x0000000000000000000000000000000000000000',
   CHANNEL_STATUS: {

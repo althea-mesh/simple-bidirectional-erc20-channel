@@ -8,8 +8,8 @@ let provider = new ethers.providers.Web3Provider(
 )
 
 const {
-  ACCT_0,
-  ACCT_1,
+  ACCT_A,
+  ACCT_B,
   ZERO,
 } = require("./constants.js");
 
@@ -18,16 +18,15 @@ module.exports = {
   sleep,
   filterLogs,
   mineBlocks,
-  createTokens,
   takeSnapshot,
   revertSnapshot,
   log,
   toBN,
-  openChannel,
+  depositContract,
+  doubleDeposit,
   channelStateAsserts,
   checkBalanceAfterGas,
-  joinChannel,
-  updateChannel,
+  guacTransfer,
   challengeChannel,
   closeChannel,
   openJoin,
@@ -85,181 +84,125 @@ function filterLogs(logs) {
   return logs.map(log => [log.event, log.args]);
 }
 
-async function createTokens(SimpleToken) {
-  const SIMPLE_TOKEN_SUPPLY = await web3.utils.toWei('10000', "ether")
-  const AMOUNT_TO_EACH = (await toBN(SIMPLE_TOKEN_SUPPLY)).div(await toBN(2))
-  const simpleToken = await SimpleToken.new({ from: ACCT_0.address })
-  await simpleToken.transfer(ACCT_1.address, AMOUNT_TO_EACH, {
-    from: ACCT_0.address
-  })
-
-  assert((await simpleToken.balanceOf(ACCT_0.address)).eq(AMOUNT_TO_EACH))
-  assert((await simpleToken.balanceOf(ACCT_1.address)).eq(AMOUNT_TO_EACH))
-
-  return {simpleToken, SIMPLE_TOKEN_SUPPLY, AMOUNT_TO_EACH}
-}
-
 async function sign (signer, message) {
   return joinSignature(signer.signDigest(message))
-
 }
 
 
-async function checkBalanceAfterGas(txn, oldBalance) {
-  let txnCost = toBN(
-    (await provider.getGasPrice())*txn.receipt.gasUsed
-  )
-  let { value, from } = await provider.getTransaction(txn.tx)
+async function checkBalanceAfterGas(txn, oldBalance, check=false) {
+  if(check) {
+    let txnCost = toBN(
+      (await provider.getGasPrice())*txn.receipt.gasUsed
+    )
+    let { value, from } = await provider.getTransaction(txn.tx)
 
-  assert(
-    oldBalance.sub(toBN(value)).sub(txnCost)
-    .eq(toBN(await provider.getBalance(from))),
-    "Ether balance after gas does not match"
-  )
+    assert(
+      oldBalance.sub(toBN(value)).sub(txnCost)
+      .eq(toBN(await provider.getBalance(from))),
+      "Ether balance after gas does not match"
+    )
+  }
 }
 
 async function channelStateAsserts({
   instance,
-  channelStatus,
-  channelCreator = ACCT_0.address,
-  counterParty = ACCT_1.address,
-  tokenAddr = ZERO,
-  challengePeriod = 0,
+  channelStatus = 0,
+  agentA = ACCT_A.address,
+  agentB = ACCT_B.address,
   channelNonce = 0,
-  expectedCloseTime = toBN('0'),
-  expectedDeposit0 = toBN('0'),
-  expectedDeposit1 = toBN('0'),
-  expectedBalance0 = toBN('0'),
-  expectedBalance1 = toBN('0'),
-  expectedChallenger  = ZERO,
+  expectedCloseBlock = toBN('0'),
+  expectedBalanceA = toBN('0'),
+  expectedBalanceB = toBN('0'),
+  expectedTotalBalance = toBN('0'),
 }) {
 
-  const activeId = await instance.activeIds.call(
-    channelCreator,
-    counterParty,
-    tokenAddr
-  );
-
   const [
-    acct_0_addr,
-    acct_1_addr,
-    tokenContract,
-    deposit0,
-    deposit1,
-    status,
-    challenge,
     nonce,
-    closeTime,
-    balance0,
-    balance1,
-    challengeStartedBy
-  ] = Object.values(await instance.getChannel(activeId))
+    balanceA,
+    balanceB,
+    balanceTotal,
+    status,
+    closeBlock,
+  ] = Object.values(await instance.channels.call(agentA, agentB))
 
-  assert.equal(acct_0_addr, channelCreator, "AgentA not equal")
-  assert.equal(acct_1_addr, counterParty, "AgentB not equal")
-  assert.equal(tokenContract, tokenAddr, "Token address not equal")
-  assert(deposit0.eq(expectedDeposit0), "Expected deposit0 not equal")
-  assert(deposit1.eq(expectedDeposit1), "Expected deposit1 not equal" )
-  assert(balance0.eq(expectedBalance0), "Expected balance0 not equal")
-  assert(balance1.eq(expectedBalance1), "Expected balance1 not equal")
-  assert.equal(status.toNumber(), channelStatus, "Channel status not equal")
-  assert.equal(
-    challenge.toNumber(),
-    challengePeriod,
-    "Challenge period not equal"
+  assert(expectedBalanceA.eq(balanceA), "Expected balanceA not equal")
+  assert(expectedBalanceB.eq(balanceB), "Expected balanceB not equal" )
+  assert(
+    balanceTotal.eq(expectedTotalBalance),
+    "Expected balance Total not equal"
   )
+  assert.equal(status.toNumber(), channelStatus, "Channel status not equal")
   assert.equal(nonce.toNumber(), channelNonce, "Nonce not equal")
-  assert(closeTime.eq(expectedCloseTime), "Close time not equal")
-  assert.equal(expectedChallenger, challengeStartedBy, "Challenger not equal")
+  assert(closeBlock.eq(expectedCloseBlock), "Close time not equal")
 }
 
 // contract functions
-async function openChannel({
+async function depositContract({
   instance,
-  deposit,
-  challengePeriod,
-  channelCreator = ACCT_0.address,
-  counterParty = ACCT_1.address,
-  tokenAddr = ZERO,
+  depositor = ACCT_A.address,
+  depositAmount = toBN(0),
+  agentA = ACCT_A.address,
+  agentB = ACCT_B.address,
+  check = false,
 }) {
 
-  let oldBalance = toBN(await provider.getBalance(channelCreator))
-  let txn = await instance.openChannel(
-    counterParty,
-    tokenAddr,
-    deposit,
-    challengePeriod,
-    { from: channelCreator, value: deposit }
+  let oldBalance = toBN(await provider.getBalance(agentA))
+  let txn = await instance.deposit(
+    agentA,
+    agentB,
+    { from: depositor, value: depositAmount }
   )
-  await checkBalanceAfterGas(txn, oldBalance)
+  //await checkBalanceAfterGas(txn, oldBalance, check)
 }
 
-
-async function joinChannel({
+async function doubleDeposit({
   instance,
-  deposit,
-  channelCreator = ACCT_0.address,
-  counterParty = ACCT_1.address,
-  tokenAddr = ZERO
+  depositA,
+  depositB,
 }) {
 
-  const activeId = await instance.activeIds.call(
-    channelCreator,
-    counterParty,
-    tokenAddr
-  );
-  
-  let oldBalance = toBN(await provider.getBalance(counterParty))
-  let txn = await instance.joinChannel(activeId, ZERO, {
-    from: counterParty,
-    value: deposit,
-  });
-  await checkBalanceAfterGas(txn, oldBalance)
+  await depositContract({
+    instance,
+    depositAmount: depositA,
+  })
+
+  await depositContract({
+    instance,
+    depositor: ACCT_B.address,
+    depositAmount: depositB,
+  })
+
 }
 
-async function updateChannel({
+async function guacTransfer({
   instance,
   updateNonce,
-  balance0,
-  balance1,
-  channelCreator = ACCT_0.address,
-  counterParty = ACCT_1.address,
-  signer0 = ACCT_0,
-  signer1 = ACCT_1,
+  balanceA,
+  balanceB,
+  agentA = ACCT_A.address,
+  agentB = ACCT_B.address,
+  signer0 = ACCT_A,
+  signer1 = ACCT_B,
 }) {
 
-  const activeId = await instance.activeIds.call(
-    channelCreator,
-    counterParty,
-    ZERO
-  )
-
   let fingerprint = web3.utils.soliditySha3(
-    activeId,
+    "Guac Transfer",
+    agentA,
+    agentB,
     updateNonce,
-    balance0,
-    balance1,
+    balanceA,
+    balanceB,
   )
 
   let sig0 = await sign(signer0, fingerprint)
   let sig1 = await sign(signer1, fingerprint)
 
-  assert(await instance.isValidStateUpdate(
-    activeId,
+  await instance.transfer(
+    agentA,
+    agentB,
     updateNonce,
-    balance0,
-    balance1,
-    sig0,
-    sig1,
-    true,
-    true,
-  ), "Channel update is not valid")
-
-  await instance.updateState(
-    activeId,
-    updateNonce,
-    balance0,
-    balance1,
+    balanceA,
+    balanceB,
     sig0,
     sig1,
   )
@@ -306,7 +249,7 @@ async function openJoin({
   deposit1 = toBN('0'),
 }) {
 
-  await openChannel({
+  await deposit({
     instance,
     channelCreator,
     counterParty,
@@ -343,3 +286,4 @@ async function openJoinChallenge({
   // with some useful information
   return await challengeChannel({instance})
 }
+
