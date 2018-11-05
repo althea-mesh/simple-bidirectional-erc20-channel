@@ -16,5 +16,6 @@ install:
 
 script:
   - npm run ganache > /dev/null &
+  - npm run migrate > /dev/null &
   - sleep 5
   - npm run test
