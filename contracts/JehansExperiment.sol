@@ -1,8 +1,9 @@
 pragma solidity ^0.4.23;
 
+import "../node_modules/openzeppelin-solidity/contracts/ECRecovery.sol";
 import "./ECTools.sol";
 
-contract ChannelManager {
+contract JehansExperiment {
     enum ChannelStatus {
         Open,
         Challenge
@@ -65,11 +66,13 @@ contract ChannelManager {
         );
 
         require(
-            ECTools.isSignedBy(fingerprint, sigA, agentA) == true,
+            ECTools.isSignedBy(fingerprint, sigA, agentA),
+            //ECRecovery.recover(fingerprint, sigA) == agentA,
             "AgentA signature not valid"
         );
         require(
-            ECTools.isSignedBy(fingerprint, sigB, agentB) == true,
+            ECTools.isSignedBy(fingerprint, sigB, agentB),
+            //ECRecovery.isSignedBy(fingerprint, sigB) == agentB
             "AgentB signature not valid"
         );
         require(
