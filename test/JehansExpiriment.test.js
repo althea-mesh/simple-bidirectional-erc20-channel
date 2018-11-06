@@ -16,6 +16,7 @@ const {
   doubleDeposit,
   channelStateAsserts,
   guacTransfer,
+  withdrawContract,
   openJoin,
   openJoinChallenge,
   challengeChannel,
@@ -95,43 +96,39 @@ contract("ChannelManager", () => {
   })
 
   context('withdraw', async () => {
-    it("happy withdraw", async () => {
+    it.only("happy withdraw", async () => {
+      const depositA = toBN(web3.utils.toWei('1', "ether"))
+      const depositB = toBN(web3.utils.toWei('3.1459', "ether"))
+      await doubleDeposit({instance, depositA, depositB})
 
-      const deposit0 = await toBN(web3.utils.toWei('10', "ether"))
-      const deposit1 = await toBN(web3.utils.toWei('3', "ether"))
-      const newBalance0 = deposit0.sub(
-        await toBN(await web3.utils.toWei('1', "ether"))
-      )
-      const newBalance1 = deposit1.add(
-        await toBN(await web3.utils.toWei('1', "ether"))
-      )
-      const challengePeriod= 6000
+      const amountToWithdraw = toBN(web3.utils.toWei('0.5', 'ether'))
+      const newNonce = 1
+      const withdrawer = ACCT_A.address
+      const oldBalance = toBN(await provider.getBalance(withdrawer))
 
-      await openJoin({
-        instance: instance,
-        challengePeriod: challengePeriod,
-        deposit0: deposit0,
-        deposit1: deposit1,
+      log('hi')
+      let txn = await withdrawContract({
+        instance,
+        withdrawer,
+        amount: amountToWithdraw,
+        nonce: newNonce, 
       })
+      let txnCost =toBN(await provider.getGasPrice()).mul(toBN(txn.receipt.gasUsed))
+      log('hi')
 
-      let updateNonce = 1 // update with higher nonce
-      await updateChannel({
-        instance: instance,
-        updateNonce: updateNonce,
-        balance0: newBalance0,
-        balance1: newBalance1,
-      })
+      let cur = toBN(await provider.getBalance(withdrawer))
+      log('hi')
+      assert(cur.eq(oldBalance.sub(txnCost)), "Account ether balance not the same")
+      log('hi')
 
       await channelStateAsserts({
         instance: instance,
-        channelNonce: updateNonce,
-        expectedDeposit0: deposit0,
-        expectedBalance0: newBalance0,  
-        expectedDeposit1: deposit1,
-        expectedBalance1: newBalance1,  
-        channelStatus: CHANNEL_STATUS.JOINED,
-        challengePeriod: challengePeriod 
+        channelNonce: newNonce,
+        expectedBalanceA: depositA.sub(amountToWithdraw),
+        expectedBalanceB: depositB,
+        expectedTotalBalance: depositA.add(depositB).sub(amountToWithdraw)
       })
+
     })
   })
 

@@ -29,7 +29,7 @@ module.exports = {
   guacTransfer,
   challengeChannel,
   closeChannel,
-  openJoin,
+  withdrawContract,
   openJoinChallenge,
   provider,
   sign,
@@ -208,6 +208,39 @@ async function guacTransfer({
   )
 }
 
+async function withdrawContract({
+  instance,
+  amount,
+  withdrawer = ACCT_A.address,
+  nonce = 0,
+  agentA = ACCT_A.address,
+  agentB = ACCT_B.address,
+  signer0 = ACCT_A,
+  signer1 = ACCT_B,
+}) {
+
+  let fingerprint = web3.utils.soliditySha3(
+    "withdraw",
+    agentA,
+    agentB,
+    nonce,
+    amount,
+    withdrawer,
+  )
+  let sig0 = await sign(signer0, fingerprint)
+  let sig1 = await sign(signer1, fingerprint)
+
+  return await instance.withdraw(
+    agentA,
+    agentB,
+    nonce,
+    amount,
+    sig0,
+    sig1,
+    { from: withdrawer }
+  )
+}
+
 async function challengeChannel({
   instance,
   channelCreator = ACCT_0.address,
@@ -240,7 +273,7 @@ async function closeChannel({
   await instance.closeChannel(activeId)
 }
 
-async function openJoin({
+async function doubleJoin({
   instance,
   channelCreator = ACCT_0.address,
   counterParty = ACCT_1.address,
